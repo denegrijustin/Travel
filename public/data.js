@@ -39,9 +39,9 @@ export const ITALY_EXTRA = {
   },
   airports: { MCI: { name: "Kansas City (MCI)", ll: [39.2976, -94.7139] }, YYZ: { name: "Toronto Pearson (YYZ)", ll: [43.6777, -79.6248] }, NAP: { name: "Naples (NAP)", ll: [40.886, 14.2908] }, FCO: { name: "Rome Fiumicino (FCO)", ll: [41.8003, 12.2389] }, ORD: { name: "Chicago O'Hare (ORD)", ll: [41.9742, -87.9073] } },
   legs: [
-    { id: "out", tour: true, kind: "Flight", date: "2027-06-17", title: "Kansas City → Toronto → Naples", route: ["MCI", "YYZ", "NAP"], note: "An overnight crossing: you land in Naples on Day 1 (Jun 18). Check the Toronto connection time and that bags are checked through to Naples." },
-    { id: "train-out", tour: true, line: "NS", kind: "Train", date: "2027-06-19", title: "Naples → Salerno", note: "From Napoli Centrale, high-speed and regional trains take roughly 35 to 60 minutes. A short taxi from Salerno station reaches Marina d'Arechi." },
-    { id: "train-rome", kind: "Train", date: "2027-06-26", title: "Salerno → Rome", note: "High-speed trains to Roma Termini take about two hours. Book a seat in advance in summer." },
-    { id: "home", tour: true, kind: "Flight", date: "2027-06-28", title: "Rome → Chicago → Kansas City", route: ["FCO", "ORD", "MCI"], note: "From Roma Termini, the Leonardo Express to Fiumicino takes about 30 minutes. Allow about three hours before an international departure." },
+    { id: "out", day: 1, tour: true, kind: "Flight", date: "2027-06-17", title: "Kansas City → Toronto → Naples", route: ["MCI", "YYZ", "NAP"], note: "An overnight crossing: you land in Naples on Day 1 (Jun 18). Check the Toronto connection time and that bags are checked through to Naples." },
+    { id: "train-out", day: 2, tour: true, line: "NS", kind: "Train", date: "2027-06-19", title: "Naples → Salerno", note: "From Napoli Centrale, high-speed and regional trains take roughly 35 to 60 minutes. A short taxi from Salerno station reaches Marina d'Arechi." },
+    { id: "train-rome", day: 9, kind: "Train", date: "2027-06-26", title: "Salerno → Rome", note: "High-speed trains to Roma Termini take about two hours. Book a seat in advance in summer." },
+    { id: "home", day: 11, tour: true, kind: "Flight", date: "2027-06-28", title: "Rome → Chicago → Kansas City", route: ["FCO", "ORD", "MCI"], note: "From Roma Termini, the Leonardo Express to Fiumicino takes about 30 minutes. Allow about three hours before an international departure." },
   ],
 };

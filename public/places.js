@@ -3,6 +3,7 @@
 // change, so the notes say what to check rather than promise anything. `wiki` is the Wikipedia article used for the live "About" text and photo.
 export const PLACES = {
   Naples: {
+    locals: ["Coffee is drunk standing at the bar, quickly and cheaply. A caffè sospeso is one paid forward for the next person.", "For lunch on the move, pizza a portafoglio (folded like a wallet) from a street counter. Skip restaurants with photo menus."],
     area: "Gulf of Naples · Campania", wiki: "Naples",
     tagline: "A loud, layered, endlessly alive port city under Vesuvius.",
     history: [
@@ -14,6 +15,7 @@ export const PLACES = {
     fact: "A much-told story says the Margherita pizza, with tomato, mozzarella and basil in the colours of the flag, was made in 1889 for Queen Margherita. Historians doubt the details, but the pizza is real.",
   },
   Salerno: {
+    locals: ["Locals take the evening passeggiata along the Lungomare Trieste. Join them with a gelato.", "The old town is best in the morning or after dinner; midday it is shuttered and hot."],
     area: "Gulf of Salerno · Campania", wiki: "Salerno",
     tagline: "The working port and gateway to the Amalfi Coast, with a medieval heart.",
     history: [
@@ -25,6 +27,7 @@ export const PLACES = {
     fact: "The Schola Medica Salernitana's verse health guide, the Regimen Sanitatis Salernitanum, was copied and translated across Europe for centuries.",
   },
   Positano: {
+    locals: ["Steps are the traffic system, so wear shoes you can climb in and carry little.", "The main beach is crowded; Fornillo, a short walk west, is calmer."],
     area: "Amalfi Coast · Campania", wiki: "Positano",
     tagline: "Pastel houses stacked in a vertical village above a pebble beach.",
     history: [
@@ -36,6 +39,7 @@ export const PLACES = {
     fact: "One legend says Poseidon founded Positano for the nymph Pasitea, whom he loved, which is where the name is said to come from.",
   },
   "Laurito Cove": {
+    locals: ["Early morning and late afternoon bring the calmest water and the fewest boats.", "Bring a mask: on calm days the bay is clear. Check local anchoring and swimming rules."],
     area: "Positano coast · Campania", wiki: "Positano",
     tagline: "A small pebble cove on the coast west of Positano, best reached from the sea.",
     history: [
@@ -47,6 +51,7 @@ export const PLACES = {
     fact: "Many coves on this stretch are easier to reach from the sea than from land, which is why a boat is the classic way to visit them.",
   },
   Procida: {
+    locals: ["The island is small and walkable, and its lanes are narrow, so leave big plans and bags on the boat.", "Look for lemon sweets and granita; Procida is known for its large lemons."],
     area: "Phlegraean Islands · Gulf of Naples", wiki: "Procida",
     tagline: "The smallest, most lived-in of the Gulf's islands, in sherbet colours.",
     history: [
@@ -58,6 +63,7 @@ export const PLACES = {
     fact: "Procida appears in the film Il Postino (1994), and the Corricella waterfront is the setting people remember. It has also been used in other films.",
   },
   Chiaiolella: {
+    locals: ["Vivara, the crescent islet reached by a footbridge, is a nature reserve; visits may be guided only, so check first.", "The lagoon-like marina is calmest in the morning."],
     area: "Procida · Gulf of Naples", wiki: "Procida",
     tagline: "A sheltered harbour in a drowned volcanic crater, with a nature islet beside it.",
     history: [
@@ -69,6 +75,7 @@ export const PLACES = {
     fact: "Vivara's crescent shape is half of an old volcanic crater, with the other half taken by the sea.",
   },
   "Marina di Corricella": {
+    locals: ["The harbour houses are famously pastel; one popular story says the colours helped fishermen spot their homes from the sea.", "Waterfront tables fill at sunset. Eat at an off hour for the best view and service."],
     area: "Procida · Gulf of Naples", wiki: "Procida",
     tagline: "The postcard harbour: tiered houses, fishing boats and waterfront restaurants.",
     history: [
@@ -80,6 +87,7 @@ export const PLACES = {
     fact: "Many of the houses have a stepped outdoor staircase and a rounded arch on the ground floor, a design that is common across the Gulf of Naples islands.",
   },
   Ischia: {
+    locals: ["Thermal spas are the local pastime. Sorgeto Bay has natural hot springs reached by steps down to the rocks.", "The island bus circles the whole coast and is the easy way to reach the far beaches."],
     area: "Gulf of Naples · Campania", wiki: "Ischia",
     tagline: "The largest island in the Gulf, known for thermal springs and green hills.",
     history: [
@@ -91,6 +99,7 @@ export const PLACES = {
     fact: "Near the summit of Mount Epomeo, 789 metres up, a small hermit's church is cut into the soft volcanic rock.",
   },
   "Castello Aragonese": {
+    locals: ["Go late in the afternoon; the causeway and the climb have little shade.", "A lift covers part of the climb at times. Check whether it is running."],
     area: "Ischia Ponte · Ischia", wiki: "Aragonese Castle",
     tagline: "A fortress on a rock, joined to the island by a long stone causeway.",
     history: [
@@ -102,6 +111,7 @@ export const PLACES = {
     fact: "At the height of its use the rock was home to around two thousand people, with its own churches and a convent.",
   },
   "La Mortella": {
+    locals: ["The garden hosts concerts in season. Check the programme before you plan the evening.", "Allow a slow hour or two; it is a garden for wandering, not rushing."],
     area: "Forio · Ischia", wiki: "La Mortella",
     tagline: "A lush garden of waterfalls and rare plants made by a composer's wife.",
     history: [
@@ -113,6 +123,7 @@ export const PLACES = {
     fact: "The garden's name, La Mortella, means \"the myrtle\" in Italian. Myrtle grows wild on the slopes.",
   },
   Sorrento: {
+    locals: ["Try delizia al limone, a lemon sponge dessert, and a small glass of limoncello after dinner.", "Locals gather on Piazza Tasso and Corso Italia in the evening."],
     area: "Sorrentine Peninsula · Campania", wiki: "Sorrento",
     tagline: "A cliff-top resort town with lemon groves and a view across the bay to Vesuvius.",
     history: [
@@ -124,6 +135,7 @@ export const PLACES = {
     fact: "The Sorrento lemon, a large, thick-skinned variety, is grown in terraced groves under protective nets and gives limoncello its flavour.",
   },
   "Marina Grande": {
+    locals: ["The old fishing harbour is quieter than the town above it. Grilled fish at the waterfront is the local choice.", "It is a climb back up to town; take the steps in the morning, not after dinner."],
     area: "Sorrento · Campania", wiki: "Sorrento",
     tagline: "A former fishing village on the western edge of Sorrento, now known for seafood.",
     history: [
@@ -134,6 +146,7 @@ export const PLACES = {
     tips: ["It is a good place to eat in the evening. Book if you have a group.", "A steep road and steps connect it to the upper town."],
   },
   Capri: {
+    locals: ["Day-trippers fill the island from about 11:00 to 16:00. Early and late are calm.", "Walk up to Anacapri, away from the crowds, and take the chairlift to Monte Solaro for the view."],
     area: "Gulf of Naples · Campania", wiki: "Capri",
     tagline: "A limestone island of cliffs, villas and an old, glamorous reputation.",
     history: [
@@ -145,6 +158,7 @@ export const PLACES = {
     fact: "A famous story says Augustus traded the larger island of Ischia to Naples to get Capri.",
   },
   "Marina Piccola": {
+    locals: ["On the south side, it is sheltered from northerly winds, so it often has the better swimming.", "Rocks and boats share the water. Look and check before you jump in."],
     area: "South coast of Capri · Campania", wiki: "Capri",
     tagline: "The small bathing harbour on Capri's south side, facing the sea stacks.",
     history: [
@@ -156,6 +170,7 @@ export const PLACES = {
     fact: "The stretch of coast here is full of the legends of the sirens, and several rocks and caves on this side of Capri are linked with them.",
   },
   Faraglioni: {
+    locals: ["Late afternoon light turns the rocks golden. Midday is flat and busy.", "A blue-coloured lizard lives only on the outer rock, Faraglione di Fuori."],
     area: "East coast of Capri · Campania", wiki: "Faraglioni",
     tagline: "Three limestone sea stacks that have become Capri's emblem.",
     history: [
@@ -167,6 +182,7 @@ export const PLACES = {
     fact: "The blue wall lizard of the outermost stack lives nowhere else in the world.",
   },
   "Blue Grotto": {
+    locals: ["You enter by a small rowing boat and lie low under the rock. Swell can close the entrance, so be ready for no.", "Expect a queue and separate fees for the boat and the entry."],
     area: "North coast of Capri · Campania", wiki: "Blue Grotto (Capri)",
     tagline: "A sea cave lit from below, where the water glows an electric blue.",
     history: [
@@ -178,6 +194,7 @@ export const PLACES = {
     fact: "The cave's entrance is so low that boats can only enter when the sea is calm, and passengers must lie flat to pass under the rock.",
   },
   "Capo Conca Bay": {
+    locals: ["Conca dei Marini, just by, is where the sfogliatella Santa Rosa pastry comes from.", "The Emerald Grotto nearby is another sea cave, best on calm mornings."],
     area: "Conca dei Marini · Amalfi Coast", wiki: "Conca dei Marini",
     tagline: "A clear-water bay below the cliffs of Conca dei Marini, good for a swim and snorkel.",
     history: [
@@ -189,6 +206,7 @@ export const PLACES = {
     fact: "The Emerald Grotto, near here, was discovered in 1932 by a local fisherman, and a nativity scene stands underwater inside it.",
   },
   Amalfi: {
+    locals: ["Try scialatielli ai frutti di mare and a lemon dessert, and walk up the Valley of the Mills away from the crowds.", "See the Cloister of Paradise first thing, before the tour buses."],
     area: "Amalfi Coast · Campania", wiki: "Amalfi",
     tagline: "Once a sea power that rivalled Venice and Genoa, now a postcard town with a great cathedral.",
     history: [
@@ -200,6 +218,7 @@ export const PLACES = {
     fact: "The Amalfi tradition of making paper from rags goes back to the 12th century, and handmade paper is still sold here.",
   },
   Rome: {
+    locals: ["Fill your bottle at a nasone, the free drinking fountains all over the city.", "Walk a street away from any monument before you pick a restaurant; tables facing the sight cost more and taste worse."],
     area: "Lazio", wiki: "Rome",
     tagline: "The Eternal City, where almost every street corner is a few thousand years deep.",
     history: [
@@ -211,6 +230,7 @@ export const PLACES = {
     fact: "Rome has more fountains and obelisks than almost any other city; the water of its ancient aqueducts still feeds many of them.",
   },
   Colosseum: {
+    locals: ["Combined tickets cover the Forum and Palatine, and the queue on that side is often shorter.", "Go at opening or late afternoon and bring water."],
     area: "Rome · Lazio", wiki: "Colosseum",
     tagline: "The largest amphitheatre ever built, still standing after nearly two thousand years.",
     history: [
@@ -222,6 +242,7 @@ export const PLACES = {
     fact: "The name probably comes from a colossal statue of Nero that once stood nearby, not from the building's size.",
   },
   Pantheon: {
+    locals: ["Look up around midday for the beam of sunlight through the oculus.", "Gran Caffè Sant'Eustachio, nearby, is a classic coffee stop."],
     area: "Rome · Lazio", wiki: "Pantheon, Rome",
     tagline: "A temple to all the gods, topped by the world's largest unreinforced concrete dome.",
     history: [
@@ -233,6 +254,7 @@ export const PLACES = {
     fact: "Rain falls through the oculus, and small drains in the floor carry it away.",
   },
   "Trevi Fountain": {
+    locals: ["Visit at dawn or late at night, when you can see it without a crowd.", "Buy gelato a few streets away; the square's prices are for the view."],
     area: "Rome · Lazio", wiki: "Trevi Fountain",
     tagline: "The baroque fountain where visitors toss coins over their shoulder.",
     history: [
@@ -243,6 +265,7 @@ export const PLACES = {
     fact: "Thousands of euros in coins are collected from the fountain and given to charity.",
   },
   "Vatican City": {
+    locals: ["Entering St Peter's Basilica is free, but the security line is long. Go early.", "Papal audience mornings fill the square, so check the calendar if crowds worry you."],
     area: "Rome", wiki: "Vatican City",
     tagline: "The world's smallest country, home to St Peter's and the Sistine Chapel.",
     history: [
