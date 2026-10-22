@@ -24,9 +24,16 @@ export const ITALY_EXTRA = {
   places: {
     Rome: [41.9028, 12.4964], Colosseum: [41.8902, 12.4922], Pantheon: [41.8986, 12.4769], "Trevi Fountain": [41.9009, 12.4833], "Vatican City": [41.9022, 12.4539],
   },
-  route: { 9: ["@SR"], 10: ["Colosseum", "Pantheon", "Trevi Fountain", "Vatican City"] },
+  route: {
+    2: ["Marina d'Arechi", "@D2", "Laurito Cove", "Positano"], // round Capo d'Orso and Capo Conca at sea
+    6: ["Marina Grande", "@D6", "Capri", "Marina Piccola", "Faraglioni", "Blue Grotto"], // out around Punta del Capo
+    8: ["Amalfi", "@D8", "Salerno"],
+    9: ["@SR"], 10: ["Colosseum", "Pantheon", "Trevi Fountain", "Vatican City"] },
   // Approximate rail corridors (lat, lon through the main stations) so trains are drawn along the line, not straight across the Apennines.
   lines: {
+    D2: [[40.615, 14.72], [40.585, 14.62], [40.59, 14.55]],
+    D6: [[40.642, 14.34], [40.628, 14.3]],
+    D8: [[40.59, 14.6], [40.61, 14.7], [40.64, 14.76]],
     NS: [[40.8359, 14.2488], [40.8528, 14.2724], [40.7889, 14.3672], [40.7405, 14.4533], [40.7456, 14.4977], [40.7457, 14.6458], [40.7006, 14.7053], [40.6824, 14.7681]],
     SR: [[40.6824, 14.7681], [40.7006, 14.7053], [40.7457, 14.6458], [40.7456, 14.4977], [40.7405, 14.4533], [40.7889, 14.3672], [40.8528, 14.2724], [41.0725, 14.3338], [41.1056, 14.2078], [41.4856, 13.8317], [41.6283, 13.3419], [41.7297, 13.0027], [41.9028, 12.4964]],
   },

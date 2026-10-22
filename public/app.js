@@ -1,4 +1,4 @@
-import { SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
+import { countdown, SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
 import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS, ITALY_EXTRA } from "./data.js";
 import { PLACES, slugify } from "./places.js";
 import { initTripMap, destroyMap } from "./map.js";
@@ -216,6 +216,24 @@ function paintNav(r, ctx) {
   mobileNav.querySelector(".active")?.scrollIntoView({ inline: "center", block: "nearest" });
 }
 
+// ---- Countdown to departure ----
+const departure = (trip) => trip.legs?.[0]?.date ?? trip.start;
+function countdownHtml(trip) {
+  const dep = departure(trip);
+  return dep ? `<div class="countdown" data-cd="${attr(dep)}" role="timer" aria-live="off"></div>` : "";
+}
+function tickCountdowns() {
+  document.querySelectorAll("[data-cd]").forEach((el) => {
+    const c = countdown(el.dataset.cd), pl = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+    const when = fmtDate(el.dataset.cd, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    el.innerHTML = c.state === "before"
+      ? `<span class="cdn"><b>${c.days}</b> days <b>${c.hours}</b> h <b>${c.minutes}</b> min</span><span class="cdl">until departure · ${esc(when)}</span>`
+      : c.state === "now" ? `<span class="cdn"><b>Departure day</b></span><span class="cdl">${esc(when)}</span>` : `<span class="cdl">Departed ${esc(when)}</span>`;
+    el.setAttribute("aria-label", c.state === "before" ? `${pl(c.days, "day")}, ${pl(c.hours, "hour")} and ${pl(c.minutes, "minute")} until departure` : "");
+  });
+}
+setInterval(tickCountdowns, 30000);
+
 // ---- Home ----
 function tripCard(t) {
   const last = t.days.at(-1)?.stops.at(-1) ?? "—";
@@ -273,7 +291,7 @@ function overview(ctx) {
 
 // ---- Map ----
 function mapView(ctx) {
-  return `<a class="back" href="${ctx.base}" data-link>← Trip overview</a><div class="eyebrow">${esc(ctx.trip.name.toUpperCase())}</div><section class="section"><h2>Map</h2><div class="note" style="margin-bottom:12px">Pick a day, click a stop, or press Play trip to follow the whole route. Routes are approximate and positions are for planning, not navigation.</div><div class="mapbar" id="mapbar"></div><div id="tripmap" role="application" aria-label="Map of the itinerary"></div><div class="mapctl"><button class="btn small" id="mplay" type="button" aria-pressed="false">Play trip</button><input id="mscrub" type="range" min="0" max="1000" value="0" aria-label="Trip progress"><span id="mpos" aria-live="polite"></span><label class="speed">Speed <select id="mspeed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label><button class="btn small ghost" id="mfit" type="button">Show all</button>${ctx.trip.legs?.some((l) => l.route) ? `<button class="btn small ghost" id="mflights" type="button">Whole journey</button>` : ""}</div><div class="mapinfo" id="mapinfo" aria-live="polite"></div><div class="mapcap" id="mapcap"></div></section>`;
+  return `<a class="back" href="${ctx.base}" data-link>← Trip overview</a><div class="eyebrow">${esc(ctx.trip.name.toUpperCase())}</div><section class="section"><h2>Map</h2><div class="note" style="margin-bottom:12px">Pick a day, click a stop, or press Play trip to follow the whole route. Routes are approximate and positions are for planning, not navigation.</div><div class="mapbar" id="mapbar"></div><div id="tripmap" role="application" aria-label="Map of the itinerary"></div><div class="mapctl"><button class="btn small" id="mplay" type="button" aria-pressed="false">Play trip</button><input id="mscrub" type="range" min="0" max="1000" value="0" aria-label="Trip progress"><span id="mpos" aria-live="polite"></span><label class="speed">Speed <select id="mspeed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label><button class="btn small ghost" id="mfit" type="button">Whole journey</button>${ctx.trip.legs?.some((l) => l.route) ? `<button class="btn small ghost" id="mflights" type="button">Italy</button>` : ""}</div><div class="mapinfo" id="mapinfo" aria-live="polite"></div><div class="mapcap" id="mapcap"></div></section>`;
 }
 function mapEnv(ctx) {
   return {
@@ -430,7 +448,8 @@ function render() {
     ctx = context(r); document.title = `${ctx.trip.name} · Travel`; html = (VIEWS[r.sec] ?? overview)(ctx);
   } else { ctx = context(r); document.title = `${ctx.trip.name} · Travel`; html = (VIEWS[r.sec] ?? overview)(ctx); }
   paintNav(r, ctx);
-  app.innerHTML = html;
+  app.innerHTML = (ctx?.trip ? countdownHtml(ctx.trip) : "") + html;
+  tickCountdowns();
   paintSync();
   if (!ctx) return;
   if (r.sec === "map") initTripMap(mapEnv(ctx));
