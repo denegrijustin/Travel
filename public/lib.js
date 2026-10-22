@@ -125,7 +125,7 @@ export const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
 
 /**
  * Joins each day's path into one continuous path, in order. Where a day starts somewhere other than where the last one ended, a "link"
- * leg joins them. `days` = [{ n, path: [[lat,lon],...], pins: [{ name, ll }] }]. Returns the vertices, the distance (nautical miles) along
+ * leg joins them. `days` = [{ n, path: [[lat,lon],...], pins: [{ name, ll }] }]. Returns the vertices, the distance (nautical miles, times a day's optional `scale`, so a long flight can take less tour time) along
  * the path at each vertex, the total, where each stop falls, and where each day starts and ends. A pin that is not on its day's path is a
  * side trip ("spur") and is placed at the end of that day.
  */
@@ -138,16 +138,16 @@ export function buildTour(days) {
     const firstIdx = verts.length;
     let link = false, rest = pts;
     if (prevEnd) {
-      if (haversineNm(prevEnd, pts[0]) > 0.2) { verts.push({ ll: pts[0], day: d.n, kind: "link" }); link = true; }
+      if (haversineNm(prevEnd, pts[0]) > 0.2) { verts.push({ ll: pts[0], day: d.n, kind: "link", mode: d.mode, scale: d.scale }); link = true; }
       rest = pts.slice(1);
-    } else { verts.push({ ll: pts[0], day: d.n, kind: "day" }); rest = pts.slice(1); }
-    for (const ll of rest) verts.push({ ll, day: d.n, kind: "day" });
+    } else { verts.push({ ll: pts[0], day: d.n, kind: "day", mode: d.mode, scale: d.scale }); rest = pts.slice(1); }
+    for (const ll of rest) verts.push({ ll, day: d.n, kind: "day", mode: d.mode, scale: d.scale });
     dayAt[d.n] = { firstIdx: prevEnd && !link ? Math.max(0, firstIdx - 1) : link ? firstIdx - 1 : firstIdx, lastIdx: verts.length - 1 };
     if (dayAt[d.n].firstIdx < 0) dayAt[d.n].firstIdx = 0;
     prevEnd = pts.at(-1);
   }
   const cum = [0];
-  for (let i = 1; i < verts.length; i++) cum[i] = cum[i - 1] + haversineNm(verts[i - 1].ll, verts[i].ll);
+  for (let i = 1; i < verts.length; i++) cum[i] = cum[i - 1] + haversineNm(verts[i - 1].ll, verts[i].ll) * (verts[i].scale ?? 1);
   const stops = [];
   for (const d of days) {
     if (!dayAt[d.n]) continue;
@@ -172,7 +172,7 @@ export function pointAt(tour, dist) {
   if (verts.length === 1) return { ll: verts[0].ll, seg: 0, heading: 0, day: verts[0].day, kind: verts[0].kind };
   while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid] < d) lo = mid + 1; else hi = mid; }
   const a = verts[lo - 1], b = verts[lo], len = cum[lo] - cum[lo - 1], t = len > 0 ? (d - cum[lo - 1]) / len : 1;
-  return { ll: [a.ll[0] + (b.ll[0] - a.ll[0]) * t, a.ll[1] + (b.ll[1] - a.ll[1]) * t], seg: lo, heading: bearing(a.ll, b.ll), day: b.day, kind: b.kind };
+  return { ll: [a.ll[0] + (b.ll[0] - a.ll[0]) * t, a.ll[1] + (b.ll[1] - a.ll[1]) * t], seg: lo, heading: bearing(a.ll, b.ll), day: b.day, kind: b.kind, mode: b.mode };
 }
 
 /** Points along the great circle from `a` to `b` (both [lat, lon]), `n` segments, for drawing a flight. */

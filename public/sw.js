@@ -1,5 +1,5 @@
 // Offline support: the app files and photos are cached after the first visit; map tiles you have looked at are kept too.
-const V = "travel-v3";
+const V = "travel-v4";
 const TILES = "travel-tiles-v1";
 const SHELL = ["/", "/app.css", "/app.js", "/lib.js", "/data.js", "/map.js", "/places.js", "/manifest.webmanifest", "/icons/icon.svg", "/icons/icon-192.png"];
 

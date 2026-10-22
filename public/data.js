@@ -24,12 +24,17 @@ export const ITALY_EXTRA = {
   places: {
     Rome: [41.9028, 12.4964], Colosseum: [41.8902, 12.4922], Pantheon: [41.8986, 12.4769], "Trevi Fountain": [41.9009, 12.4833], "Vatican City": [41.9022, 12.4539],
   },
-  route: { 9: ["Salerno", "Rome"], 10: ["Colosseum", "Pantheon", "Trevi Fountain", "Vatican City"] },
+  route: { 9: ["@SR"], 10: ["Colosseum", "Pantheon", "Trevi Fountain", "Vatican City"] },
+  // Approximate rail corridors (lat, lon through the main stations) so trains are drawn along the line, not straight across the Apennines.
+  lines: {
+    NS: [[40.8359, 14.2488], [40.8528, 14.2724], [40.7889, 14.3672], [40.7405, 14.4533], [40.7456, 14.4977], [40.7457, 14.6458], [40.7006, 14.7053], [40.6824, 14.7681]],
+    SR: [[40.6824, 14.7681], [40.7006, 14.7053], [40.7457, 14.6458], [40.7456, 14.4977], [40.7405, 14.4533], [40.7889, 14.3672], [40.8528, 14.2724], [41.0725, 14.3338], [41.1056, 14.2078], [41.4856, 13.8317], [41.6283, 13.3419], [41.7297, 13.0027], [41.9028, 12.4964]],
+  },
   airports: { MCI: { name: "Kansas City (MCI)", ll: [39.2976, -94.7139] }, YYZ: { name: "Toronto Pearson (YYZ)", ll: [43.6777, -79.6248] }, NAP: { name: "Naples (NAP)", ll: [40.886, 14.2908] }, FCO: { name: "Rome Fiumicino (FCO)", ll: [41.8003, 12.2389] }, ORD: { name: "Chicago O'Hare (ORD)", ll: [41.9742, -87.9073] } },
   legs: [
-    { id: "out", kind: "Flight", date: "2027-06-17", title: "Kansas City → Toronto → Naples", route: ["MCI", "YYZ", "NAP"], note: "An overnight crossing: you land in Naples on Day 1 (Jun 18). Check the Toronto connection time and that bags are checked through to Naples." },
-    { id: "train-out", kind: "Train", date: "2027-06-19", title: "Naples → Salerno", note: "From Napoli Centrale, high-speed and regional trains take roughly 35 to 60 minutes. A short taxi from Salerno station reaches Marina d'Arechi." },
+    { id: "out", tour: true, kind: "Flight", date: "2027-06-17", title: "Kansas City → Toronto → Naples", route: ["MCI", "YYZ", "NAP"], note: "An overnight crossing: you land in Naples on Day 1 (Jun 18). Check the Toronto connection time and that bags are checked through to Naples." },
+    { id: "train-out", tour: true, line: "NS", kind: "Train", date: "2027-06-19", title: "Naples → Salerno", note: "From Napoli Centrale, high-speed and regional trains take roughly 35 to 60 minutes. A short taxi from Salerno station reaches Marina d'Arechi." },
     { id: "train-rome", kind: "Train", date: "2027-06-26", title: "Salerno → Rome", note: "High-speed trains to Roma Termini take about two hours. Book a seat in advance in summer." },
-    { id: "home", kind: "Flight", date: "2027-06-28", title: "Rome → Chicago → Kansas City", route: ["FCO", "ORD", "MCI"], note: "From Roma Termini, the Leonardo Express to Fiumicino takes about 30 minutes. Allow about three hours before an international departure." },
+    { id: "home", tour: true, kind: "Flight", date: "2027-06-28", title: "Rome → Chicago → Kansas City", route: ["FCO", "ORD", "MCI"], note: "From Roma Termini, the Leonardo Express to Fiumicino takes about 30 minutes. Allow about three hours before an international departure." },
   ],
 };
