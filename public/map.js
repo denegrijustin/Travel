@@ -1,11 +1,12 @@
 // The trip map: animated zoom, the whole trip drawn as one connected route with direction arrows, a "play the trip" tour with a boat
 // that sails the route and stops at each place, a progress scrubber, a satellite layer, and a card for the place you pick.
-import { buildTour, pointAt, arcPoints, haversineNm, googleMapsUrl, appleMapsUrl, bearing } from "./lib.js";
+import { addDays as addDaysIso, buildTour, pointAt, arcPoints, haversineNm, googleMapsUrl, appleMapsUrl, bearing } from "./lib.js";
 
 const DAYCOL = ["#d94f3d", "#e08a1e", "#c9a400", "#3a9d5d", "#1f9bb5", "#3a6fd1", "#7a52c9", "#c0408f"];
 export const dayColor = (n) => DAYCOL[(n - 1) % DAYCOL.length];
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const TRAIN = '<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><rect x="7" y="4" width="18" height="20" rx="5" fill="#fff" stroke="#17201d" stroke-width="1.5"/><rect x="10" y="8" width="12" height="7" rx="2" fill="#215b50"/><circle cx="12" cy="20" r="1.6" fill="#17201d"/><circle cx="20" cy="20" r="1.6" fill="#17201d"/><path d="M10 28l3-4M22 28l-3-4" stroke="#17201d" stroke-width="2" stroke-linecap="round"/></svg>';
+const PLANE = '<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#fff" stroke="#17201d" stroke-width="1.5"/><path d="M16 5l2 9 8 4v2l-8-2v5l3 2v1.5l-5-1-5 1V25l3-2v-5l-8 2v-2l8-4z" fill="#8a5a00"/></svg>';
 const BOAT = '<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path d="M16 3v19H6z" fill="#fff" stroke="#17201d" stroke-width="1.5" stroke-linejoin="round"/><path d="M18 8v14h8z" fill="#fff" stroke="#17201d" stroke-width="1.5" stroke-linejoin="round"/><path d="M4 24h24l-4 5H8z" fill="#215b50" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>';
 
 let current = null; // the running map, so it can be torn down
@@ -25,12 +26,23 @@ export function initTripMap(env) {
   const el = document.getElementById("tripmap");
   if (!el) return;
   if (typeof L === "undefined") { el.innerHTML = '<div class="empty" style="padding:30px">The map library could not load. Check your connection and reload.</div>'; return; }
-  const dayData = days.map((d, i) => { const g = env.dayGeo(trip, i + 1); return { n: i + 1, path: g.path, pins: g.pins }; });
-  const tour = buildTour(dayData);
-  const allPts = [...tour.verts.map((v) => v.ll), ...dayData.flatMap((d) => d.pins.map((p) => p.ll)), ...env.savedPlaces.filter((p) => p.ll).map((p) => p.ll)];
+  const dayData = days.map((d, i) => { const g = env.dayGeo(trip, i + 1); return { n: i + 1, path: g.path, pins: g.pins, mode: d.mode ?? trip.mode }; });
+  // Flights and the opening train ride are legs of their own, tucked in before the first day on or after their date. Flights are drawn as
+  // great-circle arcs and take far less tour time than their length; the train follows the rail corridor.
+  const legSegs = (trip.legs ?? []).filter((l) => l.tour).map((l) => {
+    const ll = l.route ? l.route.map((c) => trip.airports?.[c]?.ll).filter(Boolean) : [];
+    const path = l.route ? ll.slice(1).flatMap((b, i) => arcPoints(ll[i], b).slice(i ? 1 : 0)) : trip.geo?.lines?.[l.line] ?? [];
+    return { n: "leg-" + l.id, leg: l, path, pins: [], mode: l.route ? "air" : "rail", scale: l.route ? 0.04 : 1 };
+  }).filter((x) => x.path.length > 1);
+  const segs = [...dayData];
+  for (const sg of legSegs) {
+    const at = trip.start ? days.findIndex((_, i) => addDaysIso(trip.start, i) >= sg.leg.date) : -1, idx = at < 0 ? -1 : segs.findIndex((x) => x.n === at + 1);
+    segs.splice(idx < 0 ? segs.length : idx, 0, sg);
+  }
+  const tour = buildTour(segs);
+  const allPts = [...tour.verts.filter((v) => v.mode !== "air").map((v) => v.ll), ...dayData.flatMap((d) => d.pins.map((p) => p.ll)), ...env.savedPlaces.filter((p) => p.ll).map((p) => p.ll)];
   if (!allPts.length) { el.innerHTML = '<div class="empty" style="padding:30px">No places on the map yet. Add places to a day and they appear here.</div>'; return; }
   const bounds = L.latLngBounds(allPts);
-  const sail = trip.mode === "sail";
   const R = reduced();
 
   const map = L.map(el, { scrollWheelZoom: false, wheelPxPerZoomLevel: 100, zoomAnimation: true, markerZoomAnimation: true, fadeAnimation: true });
@@ -44,7 +56,7 @@ export function initTripMap(env) {
   map.fitBounds(bounds.pad(0.12), { animate: false });
 
   // ---- The connected route ----
-  const lines = {}, casings = {}, arrows = L.layerGroup().addTo(map), linkLines = [];
+  const railOverlays = [], lines = {}, casings = {}, arrows = L.layerGroup().addTo(map), linkLines = [];
   for (const d of dayData) {
     const r = tour.days[d.n];
     if (!r) continue;
@@ -61,7 +73,8 @@ export function initTripMap(env) {
     casings[d.n] = L.polyline(pts, { color: "#fff", weight: 9, opacity: 0.75, lineCap: "round", lineJoin: "round", interactive: false }).addTo(map);
     lines[d.n] = L.polyline(pts, { color: col, weight: 5, opacity: 0.95, lineCap: "round", lineJoin: "round", className: `route route-${d.n}` }).addTo(map);
     const nm = pts.reduce((s, p, i) => (i ? s + haversineNm(pts[i - 1], p) : 0), 0);
-    lines[d.n].bindTooltip(`Day ${d.n} · ${esc(days[d.n - 1].title)}<br>about ${Math.round(nm)} nm`, { sticky: true });
+    lines[d.n].bindTooltip(`Day ${d.n} · ${esc(days[d.n - 1].title)}<br>about ${d.mode === "sail" ? `${Math.round(nm)} nm` : `${Math.round(nm * 1.15078)} mi`}`, { sticky: true });
+    if (d.mode === "rail") railOverlays.push(L.polyline(pts, { color: "#fff", weight: 2, opacity: 0.95, dashArray: "6 8", interactive: false, lineCap: "butt" }).addTo(map)); // sleepers: white dashes on the colour make a rail line
     lines[d.n].on("click", () => showDay(d.n));
     // a direction arrow in the middle of every long enough leg
     for (let i = 1; i < pts.length; i++) {
@@ -70,6 +83,19 @@ export function initTripMap(env) {
       L.marker(mid, { interactive: false, keyboard: false, icon: L.divIcon({ className: "", html: `<div class="arrow" style="--c:${col};transform:rotate(${bearing(pts[i - 1], pts[i]).toFixed(0)}deg)"></div>`, iconSize: [14, 14], iconAnchor: [7, 7] }) }).addTo(arrows);
     }
   }
+
+  // The flights and the opening train ride: amber dashed arcs for flights, a rail-style line for the train.
+  const legLines = [];
+  for (const sg of legSegs) {
+    const air = sg.mode === "air", pts = sg.path;
+    if (air) legLines.push(L.polyline(pts, { color: "#8a5a00", weight: 3, opacity: 0.9, dashArray: "8 8", lineCap: "round" }).bindTooltip(esc(sg.leg.title), { sticky: true }).addTo(map));
+    else {
+      legLines.push(L.polyline(pts, { color: "#fff", weight: 8, opacity: 0.7, interactive: false }).addTo(map));
+      legLines.push(L.polyline(pts, { color: "#3b4a45", weight: 4, opacity: 0.95 }).bindTooltip(esc(sg.leg.title), { sticky: true }).addTo(map));
+      legLines.push(L.polyline(pts, { color: "#fff", weight: 2, dashArray: "6 8", interactive: false }).addTo(map));
+    }
+  }
+  if (trip.airports) for (const a of Object.values(trip.airports)) L.marker(a.ll, { icon: L.divIcon({ className: "", html: '<div class="pin air">✈</div>', iconSize: [26, 26], iconAnchor: [13, 13] }), title: a.name }).bindTooltip(esc(a.name), { direction: "top", offset: [0, -12] }).addTo(map);
 
   // ---- Places ----
   const markers = {};
@@ -149,31 +175,33 @@ export function initTripMap(env) {
   }
 
   // ---- The boat and the tour ----
-  const modeOf = (n) => days[n - 1]?.mode ?? trip.mode;
-  const iconFor = (m) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : '<div class="dotpulse"></div>');
-  let curMode = modeOf(1);
-  const boat = L.marker(tour.verts[0].ll, { icon: L.divIcon({ className: "boat", html: `<div class="boaticon">${iconFor(modeOf(1))}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, keyboard: false, zIndexOffset: 1000, opacity: 0 }).addTo(map);
+  const iconFor = (m) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? PLANE : '<div class="dotpulse"></div>');
+  const modeOf = (v) => v?.mode ?? trip.mode;
+  let curMode = modeOf(tour.verts[0]);
+  const boat = L.marker(tour.verts[0].ll, { icon: L.divIcon({ className: "boat", html: `<div class="boaticon">${iconFor(curMode)}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, keyboard: false, zIndexOffset: 1000, opacity: 0 }).addTo(map);
   const trail = L.polyline([], { color: "#17201d", weight: 7, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }).addTo(map);
   const scrub = document.getElementById("mscrub"), pos = document.getElementById("mpos"), playBtn = document.getElementById("mplay"), speedSel = document.getElementById("mspeed");
-  let dist = 0, playing = false, raf = 0, lastT = 0, pauseUntil = 0, nextStop = 0, follow = true;
+  let camAir = false, dist = 0, playing = false, raf = 0, lastT = 0, pauseUntil = 0, nextStop = 0, follow = true;
   const SECONDS = 50; // the whole trip at 1x, not counting the stops
-  const label = () => { const p = pointAt(tour, dist); return p ? `Day ${p.day}` : ""; };
+  const VERB = { sail: "sailing", rail: "by train", air: "flying", walk: "on foot" };
+  const label = () => { const p = pointAt(tour, dist); return p ? `${typeof p.day === "number" ? `Day ${p.day}` : segs.find((x) => x.n === p.day)?.leg.title} · ${VERB[modeOf(p)] ?? ""}` : ""; };
   function setDist(d, { move = true } = {}) {
     dist = Math.max(0, Math.min(d, tour.total));
     nextStop = tour.stops.findIndex((s) => s.at > dist + 1e-9); if (nextStop < 0) nextStop = tour.stops.length;
     if (move) place();
     scrub.value = tour.total ? Math.round((dist / tour.total) * 1000) : 0;
-    pos.textContent = `${label()} · ${Math.round(dist)} of ${Math.round(tour.total)} nm`;
+    pos.textContent = label();
   }
   function place() {
     const p = pointAt(tour, dist);
     if (!p) return;
     boat.setOpacity(1);
     boat.setLatLng(p.ll);
-    const icon = boat.getElement()?.firstChild, m = modeOf(p.day);
+    const icon = boat.getElement()?.firstChild, m = modeOf(p);
     if (icon && m !== curMode) { curMode = m; icon.innerHTML = iconFor(m); icon.style.transform = ""; }
-    if (icon && m !== "walk" && m !== "air") icon.style.transform = `scaleX(${p.heading > 180 ? -1 : 1})`; // the boat faces the way it is going, east or west
-    trail.setStyle({ color: dayColor(p.day) });
+    if (icon && m === "air") icon.style.transform = `rotate(${p.heading.toFixed(0)}deg)`; // the plane points the way it flies
+    else if (icon && m !== "walk") icon.style.transform = `scaleX(${p.heading > 180 ? -1 : 1})`; // the boat and train face east or west
+    trail.setStyle({ color: typeof p.day === "number" ? dayColor(p.day) : "#8a5a00" });
     trail.setLatLngs([...tour.verts.slice(0, p.seg).map((v) => v.ll), p.ll]);
   }
   function resetBoat() { dist = 0; nextStop = 0; boat.setOpacity(0); trail.setLatLngs([]); scrub.value = 0; pos.textContent = ""; playBtn.textContent = "Play trip"; }
@@ -197,7 +225,11 @@ export function initTripMap(env) {
       raf = requestAnimationFrame(frame); return;
     }
     setDist(nd);
-    if (follow) map.setView(boat.getLatLng(), map.getZoom(), { animate: false });
+    const air = modeOf(pointAt(tour, dist)) === "air";
+    if (air !== camAir) { // zoom out to follow a flight, back in when it lands
+      camAir = air; pauseUntil = t + 1300 / speed; follow = true;
+      map.flyTo(boat.getLatLng(), air ? 4 : 10.5, { duration: 1.2, easeLinearity: 0.3 });
+    } else if (follow) map.setView(boat.getLatLng(), map.getZoom(), { animate: false });
     if (dist >= tour.total) { finish(); return; }
     raf = requestAnimationFrame(frame);
   }
@@ -213,7 +245,8 @@ export function initTripMap(env) {
     const go = () => { if (started || !playing) return; started = true; lastT = performance.now(); pauseUntil = 0; raf = requestAnimationFrame(frame); };
     map.once("moveend", go);
     setTimeout(go, 1700); // in case the camera was already there and no move happens
-    map.flyTo(start.ll, 11.5, { duration: 1.4, easeLinearity: 0.3 });
+    camAir = modeOf(start) === "air";
+    map.flyTo(start.ll, camAir ? 4 : 11.5, { duration: 1.4, easeLinearity: 0.3 });
   }
   // With reduced motion the boat jumps from place to place instead of sailing.
   function stepReduced() {
@@ -229,27 +262,11 @@ export function initTripMap(env) {
   playBtn.onclick = () => (playing ? stopPlay() : startPlay());
   scrub.oninput = () => { stopPlay(); setDist((+scrub.value / 1000) * tour.total); if (!R) map.panTo(boat.getLatLng(), { animate: true, duration: 0.25 }); else map.setView(boat.getLatLng(), map.getZoom(), { animate: false }); };
   document.getElementById("mfit").onclick = () => showAll();
-  // Flights are drawn as great-circle arcs on request, so the map stays centred on Italy until you ask for them.
-  const flightBtn = document.getElementById("mflights");
-  if (flightBtn && trip.legs && trip.airports) {
-    const flights = L.layerGroup(), pts = [];
-    for (const l of trip.legs.filter((x) => x.route)) {
-      const ll = l.route.map((c) => trip.airports[c]?.ll).filter(Boolean);
-      for (let i = 1; i < ll.length; i++) {
-        const arc = arcPoints(ll[i - 1], ll[i]);
-        L.polyline(arc, { color: "#8a5a00", weight: 3, opacity: 0.85, dashArray: "8 8", interactive: true }).bindTooltip(`${esc(l.title)}`, { sticky: true }).addTo(flights);
-      }
-      pts.push(...ll);
-    }
-    for (const a of Object.values(trip.airports)) L.marker(a.ll, { icon: L.divIcon({ className: "", html: '<div class="pin air">✈</div>', iconSize: [26, 26], iconAnchor: [13, 13] }), title: a.name }).bindTooltip(esc(a.name), { direction: "top", offset: [0, -12] }).addTo(flights);
-    let on = false;
-    flightBtn.onclick = () => {
-      stopPlay(); on = !on;
-      flightBtn.setAttribute("aria-pressed", String(on)); flightBtn.textContent = on ? "Hide flights" : "Show flights";
-      if (on) { flights.addTo(map); flyBounds(L.latLngBounds([...pts, ...allPts]).pad(0.1)); }
-      else { flights.remove(); flyBounds(bounds.pad(0.12)); }
-    };
-  }
+  // "Whole journey" pulls the camera back to take in the flights as well as Italy.
+  document.getElementById("mflights")?.addEventListener("click", () => {
+    stopPlay(); highlight(0); cap.innerHTML = ""; resetBoat();
+    flyBounds(L.latLngBounds([...allPts, ...Object.values(trip.airports ?? {}).map((a) => a.ll)]).pad(0.1));
+  });
   // dragging the map takes the camera back from the boat
   map.on("dragstart", () => { follow = false; });
   playBtn.addEventListener("click", () => { follow = true; });

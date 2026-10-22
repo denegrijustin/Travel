@@ -39,13 +39,13 @@ const ALIAS = { 1: { Salerno: "Marina d'Arechi" } }; // Italy: the first "Salern
 function italyTrip() {
   const raw = ITALY_RAW[0], X = ITALY_EXTRA;
   const days = [
-    ...raw.itinerary.map(([, title, stops, desc], i) => ({ n: i + 1, title, desc, stops, photo: ITALY_PHOTOS[i + 1] ?? null, mode: "sail" })),
+    ...raw.itinerary.map(([, title, stops, desc], i) => ({ n: i + 1, title, desc, stops, photo: ITALY_PHOTOS[i + 1] ?? null, mode: i ? "sail" : "walk" })),
     ...X.days.map(([, title, stops, desc, mode], i) => ({ n: raw.itinerary.length + i + 1, title, desc, stops, photo: ITALY_PHOTOS[raw.itinerary.length + i + 1] ?? null, mode })),
   ];
   return {
     id: raw.id, name: raw.name, start: "2027-06-18", builtin: true, mode: "sail", places: 10, final: "Kansas City", // the ten towns, islands and cities; the chips list every stop
     days, legs: X.legs, airports: X.airports,
-    geo: { ...ITALY_GEO, places: { ...ITALY_GEO.places, ...X.places }, route: { ...ITALY_GEO.route, ...X.route } },
+    geo: { ...ITALY_GEO, lines: X.lines, places: { ...ITALY_GEO.places, ...X.places }, route: { ...ITALY_GEO.route, ...X.route } },
   };
 }
 const customTrips = () => db.trips.v;
@@ -65,7 +65,7 @@ function dayGeo(trip, n) {
   let path;
   if (trip.builtin) {
     path = [];
-    for (const k of g.route?.[n] ?? []) { if (k === "@s") path.push(...g.s); else if (k === "@camp") path.push(g.camp); else if (places[k]) path.push(places[k]); }
+    for (const k of g.route?.[n] ?? []) { if (k === "@s") path.push(...g.s); else if (g.lines?.[k.slice(1)]) path.push(...g.lines[k.slice(1)]); else if (k === "@camp") path.push(g.camp); else if (places[k]) path.push(places[k]); }
   } else path = pins.map((p) => p.ll);
   return { pins, path };
 }
@@ -273,7 +273,7 @@ function overview(ctx) {
 
 // ---- Map ----
 function mapView(ctx) {
-  return `<a class="back" href="${ctx.base}" data-link>← Trip overview</a><div class="eyebrow">${esc(ctx.trip.name.toUpperCase())}</div><section class="section"><h2>Map</h2><div class="note" style="margin-bottom:12px">Pick a day, click a stop, or press Play trip to follow the whole route. Routes are approximate and positions are for planning, not navigation.</div><div class="mapbar" id="mapbar"></div><div id="tripmap" role="application" aria-label="Map of the itinerary"></div><div class="mapctl"><button class="btn small" id="mplay" type="button" aria-pressed="false">Play trip</button><input id="mscrub" type="range" min="0" max="1000" value="0" aria-label="Trip progress"><span id="mpos" aria-live="polite"></span><label class="speed">Speed <select id="mspeed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label><button class="btn small ghost" id="mfit" type="button">Show all</button>${ctx.trip.legs?.some((l) => l.route) ? `<button class="btn small ghost" id="mflights" type="button" aria-pressed="false">Show flights</button>` : ""}</div><div class="mapinfo" id="mapinfo" aria-live="polite"></div><div class="mapcap" id="mapcap"></div></section>`;
+  return `<a class="back" href="${ctx.base}" data-link>← Trip overview</a><div class="eyebrow">${esc(ctx.trip.name.toUpperCase())}</div><section class="section"><h2>Map</h2><div class="note" style="margin-bottom:12px">Pick a day, click a stop, or press Play trip to follow the whole route. Routes are approximate and positions are for planning, not navigation.</div><div class="mapbar" id="mapbar"></div><div id="tripmap" role="application" aria-label="Map of the itinerary"></div><div class="mapctl"><button class="btn small" id="mplay" type="button" aria-pressed="false">Play trip</button><input id="mscrub" type="range" min="0" max="1000" value="0" aria-label="Trip progress"><span id="mpos" aria-live="polite"></span><label class="speed">Speed <select id="mspeed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label><button class="btn small ghost" id="mfit" type="button">Show all</button>${ctx.trip.legs?.some((l) => l.route) ? `<button class="btn small ghost" id="mflights" type="button">Whole journey</button>` : ""}</div><div class="mapinfo" id="mapinfo" aria-live="polite"></div><div class="mapcap" id="mapcap"></div></section>`;
 }
 function mapEnv(ctx) {
   return {
