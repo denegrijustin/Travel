@@ -42,7 +42,8 @@ export function initTripMap(env) {
   const tour = buildTour(segs);
   const allPts = [...tour.verts.filter((v) => v.mode !== "air").map((v) => v.ll), ...dayData.flatMap((d) => d.pins.map((p) => p.ll)), ...env.savedPlaces.filter((p) => p.ll).map((p) => p.ll)];
   if (!allPts.length) { el.innerHTML = '<div class="empty" style="padding:30px">No places on the map yet. Add places to a day and they appear here.</div>'; return; }
-  const bounds = L.latLngBounds(allPts);
+  const bounds = L.latLngBounds(allPts); // the places you visit
+  const journey = L.latLngBounds([...allPts, ...Object.values(trip.airports ?? {}).map((a) => a.ll)]); // and the flights from home
   const R = reduced();
 
   const map = L.map(el, { scrollWheelZoom: false, wheelPxPerZoomLevel: 100, zoomAnimation: true, markerZoomAnimation: true, fadeAnimation: true });
@@ -53,7 +54,7 @@ export function initTripMap(env) {
   // The scroll wheel only zooms the map after you click it, so scrolling the page never gets stuck on it.
   map.on("click", () => map.scrollWheelZoom.enable());
   el.addEventListener("mouseleave", () => map.scrollWheelZoom.disable());
-  map.fitBounds(bounds.pad(0.12), { animate: false });
+  map.fitBounds(journey.pad(0.12), { animate: false });
 
   // ---- The connected route ----
   const railOverlays = [], lines = {}, casings = {}, arrows = L.layerGroup().addTo(map), linkLines = [];
@@ -95,7 +96,8 @@ export function initTripMap(env) {
       legLines.push(L.polyline(pts, { color: "#fff", weight: 2, dashArray: "6 8", interactive: false }).addTo(map));
     }
   }
-  if (trip.airports) for (const a of Object.values(trip.airports)) L.marker(a.ll, { icon: L.divIcon({ className: "", html: '<div class="pin air">✈</div>', iconSize: [26, 26], iconAnchor: [13, 13] }), title: a.name }).bindTooltip(esc(a.name), { direction: "top", offset: [0, -12] }).addTo(map);
+  const homeCode = trip.legs?.find((l) => l.route)?.route[0];
+  if (trip.airports) for (const [code, a] of Object.entries(trip.airports)) L.marker(a.ll, { icon: L.divIcon({ className: "", html: '<div class="pin air">✈</div>', iconSize: [26, 26], iconAnchor: [13, 13] }), title: a.name }).bindTooltip(code === homeCode ? `Start: ${esc(a.name)}` : esc(a.name), { direction: "top", offset: [0, -12], permanent: code === homeCode }).addTo(map);
 
   // ---- Places ----
   const markers = {};
@@ -158,7 +160,7 @@ export function initTripMap(env) {
     stopPlay();
     highlight(0); cap.innerHTML = "";
     history.replaceState({}, "", location.pathname);
-    if (animate) flyBounds(bounds.pad(0.12)); else map.fitBounds(bounds.pad(0.12), { animate: false });
+    if (animate) flyBounds(journey.pad(0.12)); else map.fitBounds(journey.pad(0.12), { animate: false });
     resetBoat();
   }
   function showDay(n) {
@@ -262,11 +264,8 @@ export function initTripMap(env) {
   playBtn.onclick = () => (playing ? stopPlay() : startPlay());
   scrub.oninput = () => { stopPlay(); setDist((+scrub.value / 1000) * tour.total); if (!R) map.panTo(boat.getLatLng(), { animate: true, duration: 0.25 }); else map.setView(boat.getLatLng(), map.getZoom(), { animate: false }); };
   document.getElementById("mfit").onclick = () => showAll();
-  // "Whole journey" pulls the camera back to take in the flights as well as Italy.
-  document.getElementById("mflights")?.addEventListener("click", () => {
-    stopPlay(); highlight(0); cap.innerHTML = ""; resetBoat();
-    flyBounds(L.latLngBounds([...allPts, ...Object.values(trip.airports ?? {}).map((a) => a.ll)]).pad(0.1));
-  });
+  // "Italy" zooms in from the whole journey to the places you visit.
+  document.getElementById("mflights")?.addEventListener("click", () => { stopPlay(); highlight(0); cap.innerHTML = ""; resetBoat(); flyBounds(bounds.pad(0.12)); });
   // dragging the map takes the camera back from the boat
   map.on("dragstart", () => { follow = false; });
   playBtn.addEventListener("click", () => { follow = true; });

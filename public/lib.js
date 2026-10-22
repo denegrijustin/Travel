@@ -188,3 +188,12 @@ export function arcPoints(a, b, n = 48) {
   }
   return out;
 }
+
+/** Time until local midnight at the start of `iso` (a date). `state` is "before", "now" (the date itself) or "past" (the date is over). */
+export function countdown(iso, now = new Date()) {
+  const [y, m, d] = iso.split("-").map(Number), start = new Date(y, m - 1, d), end = new Date(y, m - 1, d + 1);
+  if (now >= end) return { state: "past", days: 0, hours: 0, minutes: 0 };
+  if (now >= start) return { state: "now", days: 0, hours: 0, minutes: 0 };
+  const mins = Math.floor((start - now) / 60000);
+  return { state: "before", days: Math.floor(mins / 1440), hours: Math.floor((mins % 1440) / 60), minutes: mins % 60 };
+}

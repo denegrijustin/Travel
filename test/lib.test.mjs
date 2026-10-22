@@ -115,11 +115,17 @@ test("pointAt walks along the path with a heading", () => {
   assert.equal(pointAt({ verts: [], cum: [], total: 0 }, 1), null);
 });
 
-import { arcPoints } from "../public/lib.js";
+import { arcPoints, countdown } from "../public/lib.js";
 test("arcPoints runs from a to b along a great circle", () => {
   const a = [39.2976, -94.7139], b = [43.6777, -79.6248], pts = arcPoints(a, b, 10);
   assert.equal(pts.length, 11);
   assert.ok(Math.abs(pts[0][0] - a[0]) < 1e-6 && Math.abs(pts[10][1] - b[1]) < 1e-6);
   const mid = arcPoints([40, -75], [50, 5], 2)[1];
   assert.ok(mid[0] > 45, "a transatlantic arc bows north of the straight line");
+});
+
+test("countdown counts down to the start of a date", () => {
+  assert.deepEqual(countdown("2027-06-17", new Date(2027, 5, 14, 20, 30)), { state: "before", days: 2, hours: 3, minutes: 30 });
+  assert.equal(countdown("2027-06-17", new Date(2027, 5, 17, 9)).state, "now");
+  assert.equal(countdown("2027-06-17", new Date(2027, 5, 18, 0, 1)).state, "past");
 });
