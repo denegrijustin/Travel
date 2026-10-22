@@ -1,7 +1,7 @@
-import { countdown, SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
+import { arcPoints, countdown, SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
 import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS, ITALY_EXTRA } from "./data.js";
 import { PLACES, slugify } from "./places.js";
-import { initTripMap, destroyMap } from "./map.js";
+import { initTripMap, initDayMap, destroyMap, flyToPin, replayDay, fitDay, dayColor } from "./map.js";
 
 const app = document.getElementById("app"), navEl = document.getElementById("nav"), mobileNav = document.getElementById("mobileNav"), syncStat = document.getElementById("syncstat");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m]));
@@ -186,10 +186,10 @@ const STARTER = ["Passport", "Tickets and boarding passes", "Travel insurance de
 
 function route() {
   const p = location.pathname.split("/").filter(Boolean);
-  if (p[0] === "s" && p[1]) { const s = p[2] ?? ""; return { kind: "share", id: p[1], sec: SHARE_NAV.some((x) => x[0] === s) ? s : "", place: s === "guide" ? p[3] : undefined }; }
+  if (p[0] === "s" && p[1]) { const s = p[2] ?? ""; return { kind: "share", id: p[1], sec: s === "day" || SHARE_NAV.some((x) => x[0] === s) ? s : "", place: s === "guide" || s === "day" ? p[3] : undefined }; }
   if (p[0] === "trips") {
     const trip = findTrip(p[1]);
-    if (trip) { const s = p[2] ?? ""; return { kind: "trip", trip, sec: NAV.some((x) => x[0] === s) ? s : "", place: s === "guide" ? p[3] : undefined }; }
+    if (trip) { const s = p[2] ?? ""; return { kind: "trip", trip, sec: s === "day" || NAV.some((x) => x[0] === s) ? s : "", place: s === "guide" || s === "day" ? p[3] : undefined }; }
   }
   return { kind: "home" };
 }
@@ -209,7 +209,7 @@ function paintNav(r, ctx) {
   if (r.kind === "home") links = `<a class="active" href="/" data-link>Trips</a>`;
   else {
     const items = r.kind === "share" ? SHARE_NAV : NAV;
-    links = (r.kind === "trip" ? `<a href="/" data-link>← All trips</a>` : "") + items.map(([u, t]) => `<a class="${r.sec === u ? "active" : ""}" ${r.sec === u ? 'aria-current="page"' : ""} href="${ctx.base}${u ? "/" + u : ""}" data-link>${t}</a>`).join("");
+    links = (r.kind === "trip" ? `<a href="/" data-link>← All trips</a>` : "") + items.map(([u, t]) => `<a class="${(r.sec === "day" ? "" : r.sec) === u ? "active" : ""}" ${(r.sec === "day" ? "" : r.sec) === u ? 'aria-current="page"' : ""} href="${ctx.base}${u ? "/" + u : ""}" data-link>${t}</a>`).join("");
   }
   navEl.innerHTML = (ctx ? `<div class="tname">${esc(ctx.trip.name)}${ctx.readonly ? " · shared" : ""}</div>` : "") + links;
   mobileNav.innerHTML = links;
@@ -254,7 +254,7 @@ function home() {
 
 // ---- Overview and day cards ----
 function photoOf(d) { const p = d.photo; if (!p) return null; if (typeof p === "string") { const u = safeUrl(p); return u ? { src: u, credit: "" } : null; } return p; }
-const legsOn = (trip, iso) => (trip.legs ?? []).filter((l) => l.date === iso);
+const legsOn = (trip, n) => (trip.legs ?? []).filter((l) => l.day === n);
 const legHtml = (l) => `<div class="leg"><span class="badge">${esc(l.kind)}</span><div><b>${esc(l.title)}</b><small>${esc(l.note)}</small></div></div>`;
 function dayCard(ctx, d) {
   const { trip } = ctx, n = d.n, date = dayDate(trip, n), g = dayGeo(trip, n), ph = photoOf(d);
@@ -264,17 +264,17 @@ function dayCard(ctx, d) {
   const resv = resList(ctx).filter((r) => r.date === date).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const plans = ((ctx.get("plans", {}) || {})[n] ?? []).slice().sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
   const editing = !ctx.readonly && ui.editDay === n;
-  const body = `<div class="date">Day ${n} · ${esc(dayLabel(trip, n))}</div><h3>${esc(d.title)}</h3>${d.desc ? `<div class="desc">${esc(d.desc)}</div>` : ""}<div class="chips">${d.stops.map((p) => `<a class="chip" href="${attr(ctx.base)}/guide/${slugify(p)}" data-link>${esc(p)}</a>`).join("")}</div>
+  const body = `<div class="date">Day ${n} · ${esc(dayLabel(trip, n))}</div><h3><a class="dlink" href="${attr(ctx.base)}/day/${n}" data-link>${esc(d.title)}</a></h3>${d.desc ? `<div class="desc">${esc(d.desc)}</div>` : ""}<div class="chips">${d.stops.map((p) => `<a class="chip" href="${attr(ctx.base)}/guide/${slugify(p)}" data-link>${esc(p)}</a>`).join("")}</div>
   ${dist ? `<div class="meta-line">${dist}</div>` : ""}${g.path.length || g.pins.length ? `<div class="meta-line" data-wx="${n}"><span>Loading weather…</span></div>` : ""}
-  ${legsOn(trip, date).map(legHtml).join("")}
+  ${legsOn(trip, n).map(legHtml).join("")}
   ${resv.length ? `<div class="resv">${resv.map((r) => `<div><span class="badge">${esc(r.type || "Booking")}</span>${r.time ? `<b>${esc(r.time)}</b>` : ""}<span>${esc(r.title)}</span>${r.conf ? `<small>· ${esc(r.conf)}</small>` : ""}</div>`).join("")}</div>` : ""}
   ${plans.length ? `<div class="plan">${plans.map((p) => `<div>${p.time ? `<time>${esc(p.time)}</time>` : `<time></time>`}<span>${esc(p.text)}</span>${ctx.readonly ? "" : `<button type="button" aria-label="Remove plan item" data-act="plan-del" data-day="${n}" data-id="${attr(p.id)}">Remove</button>`}</div>`).join("")}</div>` : ""}
   ${!ctx.readonly && ui.planDay === n ? `<form class="dayedit" data-form="plan-add" data-day="${n}"><div class="row"><input name="time" type="time" aria-label="Time" style="max-width:130px"><input name="text" required maxlength="140" placeholder="What are you doing?" aria-label="Plan item" autofocus></div><div class="actions" style="margin:0"><button class="btn small" type="submit">Add</button><button class="btn small ghost" type="button" data-act="plan-toggle" data-day="${n}">Cancel</button></div></form>` : ""}
   ${editing ? dayEditForm(ctx, d) : ""}
-  <div class="dayacts">${g.pins.length ? `<a class="maplink" href="${ctx.base}/map?day=${n}" data-link>View on map →</a>` : ""}${ctx.readonly ? "" : `<button class="btn small" data-act="plan-toggle" data-day="${n}">Add to this day</button>${trip.builtin ? "" : `<button class="btn small" data-act="day-edit" data-day="${n}">Edit day</button><button class="btn small danger" data-act="day-del" data-day="${n}">Delete day</button>`}`}</div>`;
+  <div class="dayacts"><a class="btn small" href="${attr(ctx.base)}/day/${n}" data-link>Day details →</a>${g.pins.length ? `<a class="maplink" href="${ctx.base}/map?day=${n}" data-link>View on map →</a>` : ""}${ctx.readonly ? "" : `<button class="btn small" data-act="plan-toggle" data-day="${n}">Add to this day</button>${trip.builtin ? "" : `<button class="btn small" data-act="day-edit" data-day="${n}">Edit day</button><button class="btn small danger" data-act="day-del" data-day="${n}">Delete day</button>`}`}</div>`;
   return ph
-    ? `<article class="day hasimg" id="day-${n}"><img class="bg" src="${attr(ph.src)}" alt="" loading="${n <= 2 ? "eager" : "lazy"}" decoding="async"><div class="shade"></div>${ph.credit ? `<a class="credit" href="${attr(ph.url || "#")}" target="_blank" rel="noopener" title="${attr(ph.credit)}">Photo: ${esc(ph.credit)}</a>` : ""}<div class="in">${body}</div></article>`
-    : `<article class="day" id="day-${n}">${body}</article>`;
+    ? `<article class="day hasimg" id="day-${n}" data-open="${attr(ctx.base)}/day/${n}"><img class="bg" src="${attr(ph.src)}" alt="" loading="${n <= 2 ? "eager" : "lazy"}" decoding="async"><div class="shade"></div>${ph.credit ? `<a class="credit" href="${attr(ph.url || "#")}" target="_blank" rel="noopener" title="${attr(ph.credit)}">Photo: ${esc(ph.credit)}</a>` : ""}<div class="in">${body}</div></article>`
+    : `<article class="day" id="day-${n}" data-open="${attr(ctx.base)}/day/${n}">${body}</article>`;
 }
 function dayEditForm(ctx, d) {
   return `<form class="dayedit" data-form="day-edit" data-day="${d.n}"><label>Title<input name="title" required maxlength="80" value="${attr(d.title)}"></label><label>What's planned<textarea name="desc" rows="3" maxlength="600">${esc(d.desc)}</textarea></label><label>Places, one per line (add the city so they land in the right spot, like "Belém Tower, Lisbon")<textarea name="stops" rows="3" maxlength="400">${esc(d.stops.join("\n"))}</textarea></label><label>Photo link (optional)<input name="photo" type="url" value="${attr(typeof d.photo === "string" ? d.photo : "")}" placeholder="https://…"></label><div class="actions" style="margin:0"><button class="btn small" type="submit">Save day</button><button class="btn small ghost" type="button" data-act="day-cancel">Cancel</button></div></form>`;
@@ -287,6 +287,46 @@ function overview(ctx) {
   <section class="section"><h2>Itinerary</h2>${ctx.readonly ? "" : `<div class="note" style="margin-bottom:12px">Saved on this device${sync.key ? " and synced to your other devices." : ". Turn on sync from the home page to use it on other devices."}</div>`}
   ${!ctx.readonly && trip.mode === "sail" ? `<form class="no-print" data-form="speed" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;font-size:13px;color:var(--muted)"><label for="spd">Cruising speed</label><input id="spd" name="speed" type="number" min="2" max="30" step="0.5" value="${s.speed}" style="width:80px;border:1px solid var(--line);border-radius:10px;padding:6px 8px"> kn <button class="btn small ghost" type="submit">Update</button></form>` : ""}
   <div class="days">${trip.days.map((d) => dayCard(ctx, d)).join("")}</div>${!ctx.readonly && !trip.builtin ? `<p><button class="btn ghost" style="margin-top:14px" data-act="day-add">+ Add a day</button></p>` : ""}</section>`;
+}
+
+// ---- Day detail ----
+const MODE_NAME = { sail: "Sailing day", rail: "Train day", air: "Flying day", walk: "On foot" };
+const brief = (t, n = 230) => { if (t.length <= n) return t; const cut = t.slice(0, n), i = cut.lastIndexOf(". "); return i > 80 ? cut.slice(0, i + 1) : cut.replace(/\s+\S*$/, "") + "…"; };
+function dayLegs(ctx, n) {
+  const { trip } = ctx;
+  return (trip.legs ?? []).filter((l) => l.day === n && l.tour).map((l) => {
+    const pts = (l.route ?? []).map((c) => trip.airports?.[c]?.ll).filter(Boolean);
+    return { title: l.title, mode: l.route ? "air" : "rail", path: l.route ? pts.slice(1).flatMap((b, i) => arcPoints(pts[i], b).slice(i ? 1 : 0)) : trip.geo?.lines?.[l.line] ?? [] };
+  });
+}
+function dayMapEnv(ctx) {
+  const n = +ctx.place, d = ctx.trip.days[n - 1] ?? {}, g = d.n ? dayGeo(ctx.trip, n) : { pins: [], path: [] };
+  return { n, mode: d.mode ?? ctx.trip.mode, path: g.path, pins: g.pins, legs: dayLegs(ctx, n), esc };
+}
+function dayView(ctx) {
+  const { trip } = ctx, n = +ctx.place, d = trip.days[n - 1];
+  if (!d) return `<a class="back" href="${attr(ctx.base)}" data-link>← Itinerary</a><div class="banner">That day is not on this trip.</div>`;
+  const g = dayGeo(trip, n), ph = photoOf(d), mode = d.mode ?? trip.mode, nm = g.path.length > 1 ? pathNm(g.path) : 0;
+  const dist = nm < 0.5 ? "" : mode === "sail" ? `About ${Math.round(nm)} nm · ${fmtHours(nm / settings(ctx).speed)} at ${settings(ctx).speed} kn` : `About ${Math.round(nm * 1.15078)} mi in a straight line`;
+  const guided = trip.builtin;
+  const stops = d.stops.map((name, i) => {
+    const c = guided ? PLACES[name] : null, ll = stopLl(trip, name), col = dayColor(n);
+    const hist = c?.history?.[0] ? brief(c.history[0]) : "", loc = (c?.locals ?? c?.tips?.slice(0, 1) ?? []);
+    return `<li class="stop" style="--i:${i}"><div class="bub" style="background:${col}">${i + 1}</div><div class="sbody"><h3>${esc(name)}</h3>${c ? `<p class="stag">${esc(c.tagline)}</p>` : ""}
+      ${hist ? `<div class="sblk"><b>History</b><p>${esc(hist)}</p></div>` : ""}
+      ${loc.length ? `<div class="sblk locals"><b>Locals know</b><ul>${loc.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+      ${c?.see?.[0] ? `<div class="sblk"><b>Don't miss</b><p>${esc(c.see[0])}</p></div>` : ""}
+      <div class="sacts">${ll ? `<button type="button" class="btn small ghost" data-fly="${attr(name)}">Zoom to it on the map</button>` : ""}<a class="btn small ghost" href="${attr(ctx.base)}/guide/${slugify(name)}" data-link>Full guide →</a></div></div></li>`;
+  }).join("");
+  const prev = trip.days[n - 2], next = trip.days[n];
+  return `<a class="back" href="${attr(ctx.base)}#day-${n}" data-link>← Itinerary</a>
+  <section class="dayhero${ph ? " hasimg" : ""}">${ph ? `<img class="bg" src="${attr(ph.src)}" alt="" decoding="async"><div class="shade"></div>` : ""}<div class="in"><div class="eyebrow">DAY ${n} · ${esc(dayLabel(trip, n).toUpperCase())}</div><h1>${esc(d.title)}</h1>
+    <div class="dchips"><span class="dchip">${esc(MODE_NAME[mode] ?? "On the move")}</span>${dist ? `<span class="dchip">${esc(dist)}</span>` : ""}${g.pins.length || g.path.length ? `<span class="dchip" data-wx="${n}">Loading weather…</span>` : ""}</div>${ph?.credit ? `<a class="credit" href="${attr(ph.url || "#")}" target="_blank" rel="noopener">Photo: ${esc(ph.credit)}</a>` : ""}</div></section>
+  ${d.desc ? `<p class="dayintro">${esc(d.desc)}</p>` : ""}
+  ${legsOn(trip, n).length ? `<div class="legs" style="margin-bottom:14px">${legsOn(trip, n).map(legHtml).join("")}</div>` : ""}
+  <section class="daymapwrap"><div id="daymap" role="application" aria-label="Map of day ${n}"></div><div class="daymapbar"><button type="button" class="btn small" data-replay>Replay route</button><button type="button" class="btn small ghost" data-fit>Reset view</button>${g.pins.length ? `<a class="btn small ghost" href="${attr(ctx.base)}/map?day=${n}" data-link>Open the full map →</a>` : ""}</div></section>
+  ${stops ? `<section class="section"><h2>${d.stops.length > 1 ? "Stops today" : "Today's stop"}</h2><ol class="tl">${stops}</ol></section>` : ""}
+  <nav class="gnav" aria-label="Neighbouring days">${prev ? `<a href="${attr(ctx.base)}/day/${n - 1}" data-link>← Day ${n - 1} · ${esc(prev.title)}</a>` : "<span></span>"}${next ? `<a href="${attr(ctx.base)}/day/${n + 1}" data-link>Day ${n + 1} · ${esc(next.title)} →</a>` : "<span></span>"}</nav>`;
 }
 
 // ---- Map ----
@@ -430,7 +470,7 @@ function shareView(ctx) {
 // Render and events
 // ---------------------------------------------------------------------------------------------------------------------
 const isEditing = () => { const a = document.activeElement; return !!a && app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== "checkbox"; };
-const VIEWS = { "": overview, map: mapView, guide: guideView, reservations: reservationsView, "saved-places": placesView, packing: packingView, expenses: expensesView, documents: documentsView, notes: notesView, share: shareView };
+const VIEWS = { "": overview, map: mapView, guide: guideView, day: dayView, reservations: reservationsView, "saved-places": placesView, packing: packingView, expenses: expensesView, documents: documentsView, notes: notesView, share: shareView };
 
 async function loadShare(id) {
   try { shares.set(id, await getJson(`/api/share/${id}`)); } catch { shares.set(id, "missing"); }
@@ -454,6 +494,7 @@ function render() {
   if (!ctx) return;
   if (r.sec === "map") initTripMap(mapEnv(ctx));
   else if (r.sec === "") fillWeather(ctx.trip);
+  else if (r.sec === "day") { fillWeather(ctx.trip); initDayMap(dayMapEnv(ctx)); }
   else if (r.sec === "guide") fillGuide(ctx);
   const pn = document.getElementById("pnotes");
   if (pn && !ctx.readonly) { let t; pn.oninput = () => { clearTimeout(t); t = setTimeout(() => edit("placenotes", {}, (o) => { o[ctx.place] = pn.value; }, false), 400); }; }
@@ -561,8 +602,14 @@ const forms = {
 };
 
 document.addEventListener("click", (e) => {
+  const fly = e.target.closest("[data-fly]");
+  if (fly) { flyToPin(fly.dataset.fly); document.getElementById("daymap")?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); return; }
+  if (e.target.closest("[data-replay]")) { replayDay(); return; }
+  if (e.target.closest("[data-fit]")) { fitDay(); return; }
   const a = e.target.closest("a[data-link]");
   if (a && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.button) { e.preventDefault(); go(a.getAttribute("href")); return; }
+  const card = e.target.closest("article[data-open]");
+  if (card && !e.target.closest("a,button,input,textarea,select,label,form") && !getSelection()?.toString() && !e.metaKey && !e.ctrlKey) { go(card.dataset.open); return; }
   const el = e.target.closest("[data-act]");
   if (!el || el.tagName === "INPUT") return;
   acts[el.dataset.act]?.(el, e);

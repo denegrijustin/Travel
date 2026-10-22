@@ -306,3 +306,94 @@ export function initTripMap(env) {
   el._tripMap = map; el._boat = boat; // handles for tests and debugging
   current = { map, stop: () => { playing = false; cancelAnimationFrame(raf); clearTimeout(raf); } };
 }
+
+/**
+ * A small map for one day: the route is drawn in while a boat, train, plane or walker travels it, and each stop's pin pops up as it is reached.
+ * `env`: { n, mode, path, pins: [{name, ll}], legs: [{ mode, path, title }], esc, onPick(name) }. Returns nothing; use flyToPin(name) and replayDay().
+ */
+export function initDayMap(env) {
+  destroyMap();
+  const el = document.getElementById("daymap");
+  if (!el) return;
+  if (typeof L === "undefined") { el.innerHTML = '<div class="empty" style="padding:30px">The map library could not load. Check your connection and reload.</div>'; return; }
+  const { n, pins, esc } = env, mode = env.mode ?? "walk", col = dayColor(n), R = reduced();
+  const segs = [...env.legs.map((l, i) => ({ n: "leg" + i, path: l.path, pins: [], mode: l.mode, scale: l.mode === "air" ? 0.04 : 1, title: l.title })), { n, path: env.path, pins, mode, scale: 1 }];
+  const tour = buildTour(segs);
+  const all = [...tour.verts.map((v) => v.ll), ...pins.map((p) => p.ll)];
+  if (!all.length) { el.innerHTML = '<div class="empty" style="padding:30px">No places on the map for this day.</div>'; return; }
+  const map = L.map(el, { scrollWheelZoom: false, zoomAnimation: true, fadeAnimation: true });
+  const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' });
+  const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, attribution: "Tiles &copy; Esri, Maxar, Earthstar Geographics" });
+  osm.addTo(map);
+  L.control.layers({ Map: osm, Satellite: sat }, null, { position: "topright", collapsed: true }).addTo(map);
+  map.on("click", () => map.scrollWheelZoom.enable());
+  el.addEventListener("mouseleave", () => map.scrollWheelZoom.disable());
+  const bounds = L.latLngBounds(all);
+  map.fitBounds(bounds.pad(0.25), { animate: false, maxZoom: 13 });
+
+  // the whole route, faint, so you can see where the vehicle is headed
+  for (const sg of segs) {
+    if (sg.path.length < 2) continue;
+    const air = sg.mode === "air", rail = sg.mode === "rail";
+    L.polyline(sg.path, { color: air ? "#8a5a00" : rail ? "#3b4a45" : col, weight: air ? 3 : 4, opacity: 0.28, dashArray: air ? "8 8" : rail ? "2 8" : null, interactive: false }).addTo(map);
+  }
+  const trail = L.polyline([], { color: col, weight: 5, opacity: 0.95, lineCap: "round", lineJoin: "round", interactive: false }).addTo(map);
+  const markers = new Map();
+  pins.forEach((p, j) => {
+    const m = L.marker(p.ll, { icon: L.divIcon({ className: "", html: `<div class="pin hid" style="background:${col}">${j + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }), title: p.name, keyboard: true }).addTo(map);
+    m.bindTooltip(esc(p.name), { direction: "top", offset: [0, -12] });
+    m.on("click", () => { env.onPick?.(p.name); flyToPin(p.name); });
+    markers.set(p.name, m);
+  });
+  const iconFor = (m) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? PLANE : '<div class="dotpulse"></div>');
+  let curMode = tour.verts[0]?.mode ?? mode;
+  const rider = L.marker(tour.verts[0]?.ll ?? all[0], { icon: L.divIcon({ className: "boat", html: `<div class="boaticon">${iconFor(curMode)}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, keyboard: false, zIndexOffset: 1000, opacity: 0 }).addTo(map);
+  const pop = (name) => markers.get(name)?.getElement()?.firstChild?.classList.remove("hid");
+  const showPins = () => pins.forEach((p) => pop(p.name));
+
+  let raf = 0, token = 0;
+  const DURATION = 7000;
+  function place(dist) {
+    const p = pointAt(tour, dist);
+    if (!p) return;
+    rider.setOpacity(1); rider.setLatLng(p.ll);
+    const icon = rider.getElement()?.firstChild, m = p.mode ?? mode;
+    if (icon && m !== curMode) { curMode = m; icon.innerHTML = iconFor(m); icon.style.transform = ""; }
+    if (icon && m === "air") icon.style.transform = `rotate(${p.heading.toFixed(0)}deg)`;
+    else if (icon && m !== "walk") icon.style.transform = `scaleX(${p.heading > 180 ? -1 : 1})`;
+    trail.setLatLngs([...tour.verts.slice(0, p.seg).map((v) => v.ll), p.ll]);
+  }
+  function replay() {
+    cancelAnimationFrame(raf); const mine = ++token;
+    for (const m of markers.values()) m.getElement()?.firstChild?.classList.add("hid");
+    trail.setLatLngs([]); rider.setOpacity(0);
+    map.fitBounds(bounds.pad(0.25), { animate: false, maxZoom: 13 });
+    if (R || !tour.total) { showPins(); trail.setLatLngs(tour.verts.map((v) => v.ll)); return; }
+    let t0 = 0, nextStop = 0;
+    const frame = (t) => {
+      if (mine !== token) return;
+      t0 ||= t;
+      const f = Math.min(1, (t - t0) / DURATION), dist = easeInOutQuad(f) * tour.total;
+      place(dist);
+      while (nextStop < tour.stops.length && tour.stops[nextStop].at <= dist + 1e-9) pop(tour.stops[nextStop++].name);
+      if (f < 1) raf = requestAnimationFrame(frame);
+      else { showPins(); rider.setOpacity(0); }
+    };
+    raf = requestAnimationFrame(frame);
+  }
+  const easeInOutQuad = (x) => (x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2);
+  function flyToPin(name) {
+    const p = pins.find((x) => x.name === name);
+    if (!p) return;
+    pop(name);
+    const mk = markers.get(name)?.getElement()?.firstChild;
+    mk?.classList.remove("ping"); void mk?.offsetWidth; mk?.classList.add("ping");
+    if (R) map.setView(p.ll, 14, { animate: false }); else map.flyTo(p.ll, 14, { duration: 1, easeLinearity: 0.3 });
+  }
+  const io = new IntersectionObserver((es) => { if (es[0].isIntersecting) { io.disconnect(); replay(); } }, { threshold: 0.4 });
+  io.observe(el);
+  current = { map, stop: () => { token++; cancelAnimationFrame(raf); io.disconnect(); }, flyToPin, replay, fit: () => map.fitBounds(bounds.pad(0.25), { animate: !R, maxZoom: 13 }) };
+}
+export const flyToPin = (name) => current?.flyToPin?.(name);
+export const replayDay = () => current?.replay?.();
+export const fitDay = () => current?.fit?.();
