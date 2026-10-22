@@ -5,107 +5,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#215b50">
 <meta name="description" content="Trip dates, destinations, and daily itineraries.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Travel">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
 <title>Travel</title>
-<style>
-:root{--ink:#17201d;--muted:#67706c;--green:#215b50;--green2:#dfeae6;--sand:#f6f1e7;--card:#fff;--line:#e4e7e5;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:#f7f8f7;color:var(--ink)}a{color:inherit}.shell{min-height:100dvh;display:grid;grid-template-columns:240px 1fr}.side{background:#fff;border-right:1px solid var(--line);padding:22px 14px;position:sticky;top:0;height:100dvh}.brand{font-weight:800;font-size:22px;padding:6px 10px 20px}.brand small{display:block;color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}.nav a{display:block;padding:11px 12px;margin:3px 0;border-radius:12px;text-decoration:none;font-weight:650}.nav a.active,.nav a:hover{background:var(--green2);color:var(--green)}.content{padding:32px;max-width:1160px;width:100%;margin:auto}.eyebrow{color:var(--green);font-size:12px;font-weight:800;letter-spacing:.12em}.hero{background:linear-gradient(135deg,#173f38,#2a6e61);color:#fff;border-radius:28px;padding:28px}.hero h1{font-size:clamp(36px,6vw,64px);line-height:.95;margin:10px 0 12px}.hero p{margin:0 0 20px;color:#e9f1ee}.stats{display:flex;gap:12px;flex-wrap:wrap}.stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);padding:12px 14px;border-radius:14px;min-width:145px}.stat b{display:block;font-size:20px}.section{margin-top:28px}.section h2{margin:0 0 12px;font-size:24px}.note{color:var(--muted);font-size:13px}.days{display:grid;gap:14px}.day{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px}.date{color:var(--green);font-weight:750}.day h3{margin:3px 0 6px;font-size:20px}.desc{color:#47534f;line-height:1.5}.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.chip{background:var(--sand);padding:6px 9px;border-radius:999px;font-size:12px;font-weight:700;color:#675f4c}.tool{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px}.tool input,.tool textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px;background:#fbfcfb}.tool button{border:0;border-radius:12px;background:var(--green);color:#fff;padding:10px 14px;font-weight:750}.row{display:flex;gap:10px}.row>*{flex:1}.list{display:grid;gap:8px;margin-top:12px}.item{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px 12px;border:1px solid var(--line);border-radius:12px}.empty{color:var(--muted);padding:16px 0}.mobile{display:none}@media(max-width:820px){.shell{display:block}.side{display:none}.content{padding:18px 16px 90px}.hero{border-radius:22px;padding:22px}.mobile{display:flex;position:fixed;left:10px;right:10px;bottom:10px;z-index:20;background:rgba(255,255,255,.95);backdrop-filter:blur(18px);border:1px solid var(--line);border-radius:18px;padding:6px;overflow:auto}.mobile a{flex:0 0 auto;text-decoration:none;font-size:12px;font-weight:750;padding:10px;border-radius:12px}.mobile a.active{background:var(--green2);color:var(--green)}}
-.trips{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}.tcard{display:block;text-decoration:none;background:#fff;border:1px solid var(--line);border-radius:24px;overflow:hidden;transition:transform .15s,box-shadow .15s}.tcard:hover,.tcard:focus-visible{transform:translateY(-2px);box-shadow:0 10px 28px rgba(23,32,29,.12)}.tcard .cover{background:linear-gradient(135deg,#173f38,#2a6e61);color:#fff;padding:22px 20px;min-height:130px;display:flex;flex-direction:column;justify-content:flex-end}.tcard .cover h3{margin:0;font-size:28px;line-height:1}.tcard .cover span{color:#e9f1ee;font-size:14px;margin-top:6px}.tcard .meta{display:flex;gap:16px;padding:14px 20px;font-size:13px;color:var(--muted)}.tcard .meta b{display:block;color:var(--ink);font-size:15px}.back{display:inline-block;margin-bottom:14px;color:var(--green);font-weight:750;text-decoration:none}.side .tname{padding:4px 12px 10px;color:var(--muted);font-size:13px;font-weight:700}
-/* Day cards with a photo behind them */
-.day.hasimg{position:relative;overflow:hidden;border:0;padding:0;min-height:260px;display:flex;align-items:flex-end;background:#173f38;color:#fff;isolation:isolate}
-.day .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;transform:scale(1.02);transition:transform .6s ease}
-.day.hasimg:hover .bg{transform:scale(1.06)}
-.day .shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(8,22,19,.05) 0%,rgba(8,22,19,.42) 34%,rgba(8,22,19,.9) 100%)}
-.day .in{padding:18px;width:100%;text-shadow:0 1px 8px rgba(0,0,0,.45)}
-.hasimg .date{color:#c9eadf}
-.hasimg h3{color:#fff;font-size:22px}
-.hasimg .desc{color:rgba(255,255,255,.92)}
-.hasimg .chip{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);text-shadow:none}
-.credit{position:absolute;right:10px;top:10px;max-width:70%;font-size:10px;line-height:1.3;color:rgba(255,255,255,.88);background:rgba(0,0,0,.4);padding:3px 8px;border-radius:999px;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:none}
-.credit:hover{background:rgba(0,0,0,.65)}
-@media(prefers-reduced-motion:reduce){.day .bg{transition:none}}
-/* Map */
-.mapbar{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}.mapbar::-webkit-scrollbar{display:none}
-.mapbar button{flex:none;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:8px 13px;font:inherit;font-weight:650;font-size:13px;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
-.mapbar button[aria-pressed=true]{background:var(--green);border-color:var(--green);color:#fff}
-#tripmap{height:min(68vh,640px);min-height:380px;border-radius:22px;border:1px solid var(--line);overflow:hidden;background:#dfeae6}
-.mapcap{display:flex;gap:14px;align-items:flex-start;margin-top:12px}
-.mapcap .day{flex:1}
-.pin{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;color:#fff;font-weight:800;font-size:12px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)}
-.pin.dim{opacity:.35}
-.leaflet-popup-content{font:14px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;margin:12px 14px}
-.leaflet-popup-content b{display:block;font-size:15px;margin-bottom:2px}
-.leaflet-popup-content small{color:#67706c}
-.maplink{display:inline-block;margin-top:12px;color:var(--green);font-weight:700;font-size:13px;text-decoration:none}
-.hasimg .maplink{color:#c9eadf}
-</style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="/app.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </head>
 <body>
-<div class="shell"><aside class="side"><div class="brand"><small>Personal trip planner</small>Travel</div><nav class="nav" id="nav"></nav></aside><main class="content" id="app"></main></div><nav class="mobile" id="mobileNav"></nav>
-<script>
-const trips=[{id:"italy-2027",name:"Italy 2027",dates:"Jun 18 – Jun 25, 2027",duration:"8 days",destinations:"9 places",final:"Salerno",itinerary:[
-["Jun 18","Arrive in Naples",["Naples"],"Arrive in Naples and head to the hotel. If time allows, enjoy a relaxed evening along the lungomare, with an optional visit to Museo Cappella Sansevero and pizza in the historic center."],
-["Jun 19","Salerno → Positano",["Salerno","Positano","Laurito Cove"],"Check in at Marina d'Arechi, provision and set sail west. Swim at Laurito Cove if conditions allow, then spend the evening exploring Positano."],
-["Jun 20","Positano → Procida",["Procida","Chiaiolella","Marina di Corricella"],"Cruise into the Gulf of Naples toward colorful Procida. Explore on foot, enjoy beach time at Chiaiolella and finish in Marina di Corricella."],
-["Jun 21","Procida → Ischia",["Ischia","Castello Aragonese","La Mortella"],"Sail to Ischia for gardens, thermal waters and a relaxed island afternoon. Optional Castello Aragonese, La Mortella or a thermal spa."],
-["Jun 22","Ischia → Sorrento",["Sorrento","Marina Grande"],"Cruise toward Sorrento. Swim when conditions allow, then explore the lanes, viewpoints and Vallone dei Mulini."],
-["Jun 23","Sorrento → Capri",["Capri","Marina Piccola","Faraglioni","Blue Grotto"],"Arrive at Capri, anchor near Marina Piccola when possible, see the Faraglioni and spend the afternoon ashore. Blue Grotto is optional depending on conditions."],
-["Jun 24","Capri → Capo Conca Bay → Amalfi",["Capo Conca Bay","Amalfi"],"Return toward the Amalfi Coast, stop for a swim and snorkel at Capo Conca Bay, then continue to Amalfi for the cathedral piazza and narrow lanes."],
-["Jun 25","Amalfi → Salerno",["Amalfi","Salerno"],"Final coastal cruise back to Salerno with time to refuel, settle accounts and enjoy a final marina evening before disembarkation."]
-]}];
-const MAP={"places":{"Naples":[40.8359,14.2488],"Marina d'Arechi":[40.6427,14.8157],"Salerno":[40.6824,14.7681],"Positano":[40.6287,14.4855],"Laurito Cove":[40.6195,14.519],"Procida":[40.765,14.0239],"Chiaiolella":[40.7498,14.0088],"Marina di Corricella":[40.7616,14.0296],"Ischia":[40.7436,13.9429],"Castello Aragonese":[40.732,13.9652],"La Mortella":[40.7525,13.8727],"Sorrento":[40.6249,14.3748],"Marina Grande":[40.6275,14.3656],"Capri":[40.5488,14.2284],"Marina Piccola":[40.5452,14.2344],"Faraglioni":[40.54,14.2529],"Blue Grotto":[40.5617,14.209],"Capo Conca":[40.6145,14.5744],"Amalfi":[40.6337,14.6026]},"camp":[40.5575,14.318],"route":{"1":["Naples"],"2":["Marina d'Arechi","Laurito Cove","Positano"],"3":["Positano","@s","@camp","Procida","Chiaiolella","Marina di Corricella"],"4":["Marina di Corricella","Ischia","Castello Aragonese"],"5":["Castello Aragonese","Sorrento","Marina Grande"],"6":["Marina Grande","Capri","Marina Piccola","Faraglioni","Blue Grotto"],"7":["Faraglioni","@camp","@s","Capo Conca","Amalfi"],"8":["Amalfi","Salerno"]},"s":[[40.605,14.46],[40.575,14.385]]};
-const DAYCOL=["#d94f3d","#e08a1e","#c9a400","#3a9d5d","#1f9bb5","#3a6fd1","#7a52c9","#c0408f"];
-let mapInst=null;
-const photos={"1":{"src":"/img/day-1.jpg","credit":"Richard Nevell · CC BY-SA 4.0","url":"https://commons.wikimedia.org/wiki/File:Napoli_-_Maschio_Angioino_-_202209302342_3.jpg"},"2":{"src":"/img/day-2.jpg","credit":"JeCCo · CC BY 4.0","url":"https://commons.wikimedia.org/wiki/File:Positano_Sunset.JPG"},"3":{"src":"/img/day-3.jpg","credit":"Ekrem Canli · CC BY-SA 4.0","url":"https://commons.wikimedia.org/wiki/File:Corricella_2016%2C_Procida_%282%29.jpg"},"4":{"src":"/img/day-4.jpg","credit":"Ugeorge · CC BY-SA 3.0","url":"https://commons.wikimedia.org/wiki/File:Spiaggia_dei_Pescatori.jpg"},"5":{"src":"/img/day-5.jpg","credit":"Kim Traynor · CC BY-SA 3.0","url":"https://commons.wikimedia.org/wiki/File:View_of_Sorrento.jpg"},"6":{"src":"/img/day-6.jpg","credit":"Sean William · Public domain","url":"https://commons.wikimedia.org/wiki/File:Capri_coastline.jpg"},"7":{"src":"/img/day-7.jpg","credit":"Sudodana2048 · CC BY-SA 3.0","url":"https://commons.wikimedia.org/wiki/File:Amalfi_sea_view_Italy.JPG"},"8":{"src":"/img/day-8.jpg","credit":"Cabalist12 · CC BY-SA 4.0","url":"https://commons.wikimedia.org/wiki/File:Panorama_of_salerno_from_arechi.jpg"}};
-const sections=[["","Overview"],["map","Map"],["reservations","Reservations"],["saved-places","Saved places"],["packing","Packing"],["expenses","Expenses"],["documents","Documents"],["notes","Notes"]];
-const store={reservations:"reservations",saved:"places",packing:"packing",documents:"documents"};
-let trip=null,sec="";
-const key=n=>"travel-"+trip.id+"-"+n,load=(n,f)=>{try{return JSON.parse(localStorage.getItem(key(n)))??f}catch{return f}},save=(n,v)=>{try{localStorage.setItem(key(n),JSON.stringify(v))}catch{}};
-const esc=s=>String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
-
-const stopName=(dayIdx,c)=>c==="Salerno"&&dayIdx===1?"Marina d'Arechi":c;
-const pt=(k)=>k==="@camp"?MAP.camp:MAP.places[k];
-function dayPath(n){const out=[];for(const k of MAP.route[n]||[]){if(k==="@s")out.push(...MAP.s);else out.push(pt(k))}return out}
-function mapView(){return '<a class="back" href="/trips/'+trip.id+'" data-link>← Trip overview</a><div class="eyebrow">'+esc(trip.name.toUpperCase())+'</div><section class="section"><h2>Map</h2><div class="note" style="margin-bottom:12px">Pick a day to focus the route. Sea routes are approximate; positions are for planning, not navigation.</div><div class="mapbar" id="mapbar"></div><div id="tripmap" role="application" aria-label="Map of the itinerary"></div><div class="mapcap" id="mapcap"></div></section>'}
-function initMap(){
- if(mapInst){mapInst.remove();mapInst=null}
- if(typeof L==="undefined"){tripmap.innerHTML='<div class="empty" style="padding:30px">The map library could not load. Check your connection and reload.</div>';return}
- const map=mapInst=L.map("tripmap",{scrollWheelZoom:false,zoomControl:true});
- L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
- const days=trip.itinerary,lines=[],pins=[];
- days.forEach((x,i)=>{const n=i+1,col=DAYCOL[i%DAYCOL.length],path=dayPath(n);
-  if(path.length>1)lines[i]=L.polyline(path,{color:col,weight:4,opacity:.9,dashArray:"1 8",lineCap:"round"}).addTo(map);
-  const stops=x[2].map(c=>[c,pt(stopName(n,c))]).filter(a=>a[1]);
-  stops.forEach(([c,ll],j)=>{const first=j===0;const ic=L.divIcon({className:"",html:'<div class="pin" style="background:'+col+'">'+(first?n:"")+'</div>',iconSize:[26,26],iconAnchor:[13,13]});
-   const m=L.marker(ll,{icon:ic,title:c,keyboard:true,riseOnHover:true}).addTo(map).bindPopup('<b>'+esc(c)+'</b><small>Day '+n+' · '+esc(x[0])+'</small><div style="margin-top:6px">'+esc(x[1])+'</div>');
-   (pins[i]=pins[i]||[]).push(m)})});
- const all=L.latLngBounds(Object.values(MAP.places).map(a=>L.latLng(a[0],a[1])));
- const bar=document.getElementById("mapbar"),cap=document.getElementById("mapcap");
- let cur=0;
- const want=new URLSearchParams(location.search).get("day");
- function show(n){cur=n;
-  bar.innerHTML=['<button type="button" aria-pressed="'+(n===0)+'" data-d="0">All days</button>'].concat(days.map((x,i)=>'<button type="button" aria-pressed="'+(n===i+1)+'" data-d="'+(i+1)+'">Day '+(i+1)+'</button>')).join("");
-  bar.querySelectorAll("button").forEach(b=>b.onclick=()=>{show(+b.dataset.d);history.replaceState({},"",location.pathname+(+b.dataset.d?"?day="+b.dataset.d:""))});
-  days.forEach((x,i)=>{const on=!n||n===i+1;if(lines[i])lines[i].setStyle({opacity:on?.95:.15,weight:on&&n?5:4});(pins[i]||[]).forEach(m=>{const el=m.getElement();if(el)el.firstChild.classList.toggle("dim",!on);m.setZIndexOffset(on?500:0)})});
-  if(!n){map.fitBounds(all.pad(.12));cap.innerHTML=""}
-  else{const pts=[...dayPath(n),...(pins[n-1]||[]).map(m=>m.getLatLng())];map.fitBounds(L.latLngBounds(pts).pad(.25),{maxZoom:12});const x=days[n-1];cap.innerHTML='<article class="day"><div class="date">Day '+n+' · '+esc(x[0])+'</div><h3>'+esc(x[1])+'</h3><div class="desc">'+esc(x[3])+'</div><div class="chips">'+x[2].map(c=>'<span class="chip">'+esc(c)+'</span>').join("")+'</div></article>'}}
- show(want&&+want>=1&&+want<=days.length?+want:0);
- setTimeout(()=>map.invalidateSize(),50)}
-function route(){const parts=location.pathname.split("/").filter(Boolean);trip=null;sec="";if(parts[0]==="trips"){trip=trips.find(t=>t.id===parts[1])||null;if(trip)sec=sections.some(x=>x[0]===(parts[2]||""))?(parts[2]||""):""}}
-function nav(){let l;if(!trip)l='<a class="active" href="/" data-link>Trips</a>';else{const base="/trips/"+trip.id;l='<a href="/" data-link>← All trips</a>'+sections.map(([u,t])=>'<a class="'+(sec===u?'active':'')+'" href="'+base+(u?"/"+u:"")+'" data-link>'+t+'</a>').join("")}navEl.innerHTML=(trip?'<div class="tname">'+esc(trip.name)+'</div>':"")+l;mobileNav.innerHTML=l}
-function home(){return '<div class="eyebrow">MY TRIPS</div><section class="section"><h2>Trips</h2><div class="trips">'+trips.map(t=>'<a class="tcard" href="/trips/'+t.id+'" data-link><div class="cover"><h3>'+esc(t.name)+'</h3><span>'+esc(t.dates)+'</span></div><div class="meta"><div>Duration<b>'+esc(t.duration)+'</b></div><div>Destinations<b>'+esc(t.destinations)+'</b></div><div>Ends in<b>'+esc(t.final)+'</b></div></div></a>').join("")+'</div></section>'}
-function overview(){return '<a class="back" href="/" data-link>← All trips</a><div class="eyebrow">TRIP OVERVIEW</div><section class="hero"><h1>'+esc(trip.name)+'</h1><p>'+esc(trip.dates)+'</p><div class="stats"><div class="stat">Duration<b>'+esc(trip.duration)+'</b></div><div class="stat">Destinations<b>'+esc(trip.destinations)+'</b></div><div class="stat">Final destination<b>'+esc(trip.final)+'</b></div></div></section><section class="section"><h2>Itinerary</h2><div class="note" style="margin-bottom:12px">Saved on this device, in this browser. Cross-device sync is not enabled.</div><div class="days">'+trip.itinerary.map((x,i)=>{const ph=trip.id==="italy-2027"?photos[i+1]:null,body='<div class="date">Day '+(i+1)+' · '+x[0]+'</div><h3>'+x[1]+'</h3><div class="desc">'+x[3]+'</div><div class="chips">'+x[2].map(p=>'<span class="chip">'+p+'</span>').join("")+'</div><a class="maplink" href="/trips/'+trip.id+'/map?day='+(i+1)+'" data-link>View on map →</a>';return ph?'<article class="day hasimg"><img class="bg" src="'+ph.src+'" alt="" loading="'+(i<2?"eager":"lazy")+'" decoding="async"><div class="shade"></div><a class="credit" href="'+ph.url+'" target="_blank" rel="noopener" title="'+esc(ph.credit)+'">Photo: '+esc(ph.credit)+'</a><div class="in">'+body+'</div></article>':'<article class="day">'+body+'</article>'}).join("")+'</div></section>'}
-function generic(type,title,ph){const a=load(type,[]);return '<div class="eyebrow">'+esc(trip.name.toUpperCase())+'</div><section class="section"><h2>'+title+'</h2><div class="note" style="margin-bottom:12px">Saved in this browser.</div><div class="tool"><div class="row"><input id="entry" placeholder="'+ph+'"><button id="add">Add</button></div><div class="list">'+(a.length?a.map((v,i)=>'<div class="item"><span>'+esc(v)+'</span><button data-del="'+i+'">Remove</button></div>').join(""):'<div class="empty">Nothing added yet.</div>')+'</div></div></section>'}
-function render(){route();nav();document.title=(trip?trip.name+" · ":"")+"Travel";let h;
-if(!trip)h=home();else if(sec==="")h=overview();else if(sec==="map")h=mapView();else if(sec==="reservations")h=generic("reservations","Reservations","Add hotel, train, tour or confirmation");else if(sec==="saved-places")h=generic("places","Saved places","Add a restaurant, sight or place");else if(sec==="packing")h=generic("packing","Packing list","Add a packing item");else if(sec==="documents")h=generic("documents","Documents","Add a document reference or link");else if(sec==="notes")h='<div class="eyebrow">'+esc(trip.name.toUpperCase())+'</div><section class="section"><h2>Notes</h2><div class="tool"><textarea id="notes" rows="14" placeholder="Trip notes…">'+esc(load("notes",""))+'</textarea></div></section>';else h='<div class="eyebrow">'+esc(trip.name.toUpperCase())+'</div><section class="section"><h2>Expenses</h2><div class="tool"><div class="row"><input id="desc" placeholder="Expense"><input id="amt" inputmode="decimal" placeholder="Amount"><button id="addexp">Add</button></div><div class="list">'+load("expenses",[]).map((x,i)=>'<div class="item"><span>'+esc(x.d)+'</span><b>$'+Number(x.a||0).toFixed(2)+'</b><button data-expdel="'+i+'">Remove</button></div>').join("")+'</div></div></section>';
-if(mapInst&&sec!=="map"){mapInst.remove();mapInst=null}app.innerHTML=h;if(sec==="map")initMap();
-const type=sec==="saved-places"?"places":sec;
-if(["reservations","saved-places","packing","documents"].includes(sec)){add.onclick=()=>{const v=entry.value.trim();if(!v)return;const a=load(type,[]);a.push(v);save(type,a);render()};document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const a=load(type,[]);a.splice(+b.dataset.del,1);save(type,a);render()})}
-if(sec==="notes")notes.oninput=()=>save("notes",notes.value);
-if(sec==="expenses"){addexp.onclick=()=>{const d=desc.value.trim();if(!d)return;const a=load("expenses",[]);a.push({d,a:amt.value});save("expenses",a);render()};document.querySelectorAll("[data-expdel]").forEach(b=>b.onclick=()=>{const a=load("expenses",[]);a.splice(+b.dataset.expdel,1);save("expenses",a);render()})}}
-const app=document.getElementById("app"),navEl=document.getElementById("nav"),mobileNav=document.getElementById("mobileNav");
-document.addEventListener("click",e=>{const a=e.target.closest("a[data-link]");if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.button)return;e.preventDefault();history.pushState({},"",a.getAttribute("href"));render();scrollTo(0,0)});
-addEventListener("popstate",render);render();
-</script>
+<div class="shell"><aside class="side"><div class="brand"><small>Personal trip planner</small>Travel</div><nav class="nav" id="nav" aria-label="Trip sections"></nav><div class="syncstat" id="syncstat"></div></aside><main class="content" id="app"></main></div><nav class="mobile" id="mobileNav" aria-label="Trip sections"></nav>
+<script type="module" src="/app.js"></script>
 </body>
 </html>
