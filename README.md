@@ -14,7 +14,7 @@ Personal trip planner, deployed as the `italy` Cloudflare Worker (italy.elskatem
 ## Files
 - `public/index.html`, `app.css`, `app.js`: the app. `lib.js`: pure helpers shared with the Worker and tests. `data.js`: the Italy trip, its approximate coordinates and photo credits. `sw.js`, `manifest.webmanifest`, `icons/`.
 - `src/worker.js`: `/api/sync/:key` (GET, PUT with server-side merge) and `/api/share` (POST, GET), backed by the `SYNC` KV namespace. Everything else is served from `public/`.
-- `wrangler.jsonc`: Worker name `italy` (must match the Cloudflare project), the assets folder, and the KV binding.
+- `wrangler.jsonc`: Worker name `italy` (must match the Cloudflare project), the assets folder, and the KV binding. `run_worker_first` is `true` (not a path list) so older Wrangler versions, which Workers Builds may use, accept the file; the Worker passes non-API requests straight to the assets.
 
 ## Develop
 ```
