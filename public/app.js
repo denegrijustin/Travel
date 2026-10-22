@@ -1,5 +1,7 @@
 import { SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
 import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS } from "./data.js";
+import { PLACES, slugify } from "./places.js";
+import { initTripMap, destroyMap } from "./map.js";
 
 const app = document.getElementById("app"), navEl = document.getElementById("nav"), mobileNav = document.getElementById("mobileNav"), syncStat = document.getElementById("syncstat");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m]));
@@ -169,21 +171,21 @@ async function fillWeather(trip) {
 // ---------------------------------------------------------------------------------------------------------------------
 const ui = { newTrip: false, editDay: null, planDay: null, editRes: null, busy: false, shareUrl: "", msg: "" };
 const shares = new Map(); // share id -> snapshot (or "missing")
-let mapInst = null, installEvent = null;
+let installEvent = null;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvent = e; if (route().kind === "home") render(); });
 
-const NAV = [["", "Overview"], ["map", "Map"], ["reservations", "Reservations"], ["saved-places", "Saved places"], ["packing", "Packing"], ["expenses", "Expenses"], ["documents", "Documents"], ["notes", "Notes"], ["share", "Share & export"]];
-const SHARE_NAV = [["", "Overview"], ["map", "Map"], ["reservations", "Reservations"]];
+const NAV = [["", "Overview"], ["map", "Map"], ["guide", "Place guides"], ["reservations", "Reservations"], ["saved-places", "Saved places"], ["packing", "Packing"], ["expenses", "Expenses"], ["documents", "Documents"], ["notes", "Notes"], ["share", "Share & export"]];
+const SHARE_NAV = [["", "Overview"], ["map", "Map"], ["guide", "Place guides"], ["reservations", "Reservations"]];
 const RES_TYPES = ["Hotel", "Boat", "Flight", "Train", "Car", "Tour", "Restaurant", "Other"];
 const CATS = ["Food", "Lodging", "Transport", "Fuel & marina", "Activities", "Shopping", "Other"];
 const STARTER = ["Passport", "Tickets and boarding passes", "Travel insurance details", "Phone charger and plug adapter (Italy: types C, F, L)", "Sunscreen", "Sunglasses and hat", "Swimwear", "Water shoes", "Light jacket for evenings", "Medications", "Cash and cards", "Dry bag", "Motion-sickness remedy", "Refillable water bottle"];
 
 function route() {
   const p = location.pathname.split("/").filter(Boolean);
-  if (p[0] === "s" && p[1]) { const s = p[2] ?? ""; return { kind: "share", id: p[1], sec: SHARE_NAV.some((x) => x[0] === s) ? s : "" }; }
+  if (p[0] === "s" && p[1]) { const s = p[2] ?? ""; return { kind: "share", id: p[1], sec: SHARE_NAV.some((x) => x[0] === s) ? s : "", place: s === "guide" ? p[3] : undefined }; }
   if (p[0] === "trips") {
     const trip = findTrip(p[1]);
-    if (trip) { const s = p[2] ?? ""; return { kind: "trip", trip, sec: NAV.some((x) => x[0] === s) ? s : "" }; }
+    if (trip) { const s = p[2] ?? ""; return { kind: "trip", trip, sec: NAV.some((x) => x[0] === s) ? s : "", place: s === "guide" ? p[3] : undefined }; }
   }
   return { kind: "home" };
 }
@@ -191,9 +193,9 @@ function go(path) { history.pushState({}, "", path); render(); scrollTo(0, 0); }
 
 /** Everything a trip view reads: your data, or a shared snapshot. */
 function context(r) {
-  if (r.kind === "trip") return { trip: r.trip, readonly: false, base: `/trips/${r.trip.id}`, get: (n, f) => sec(r.trip.id, n, f) };
+  if (r.kind === "trip") return { trip: r.trip, readonly: false, base: `/trips/${r.trip.id}`, place: r.place, get: (n, f) => sec(r.trip.id, n, f) };
   const snap = shares.get(r.id);
-  return { trip: snap.trip, readonly: true, base: `/s/${r.id}`, snap, get: (n, f) => (n === "reservations" ? snap.reservations : n === "plans" ? snap.plans : n === "places" ? snap.places : n === "settings" ? snap.settings : undefined) ?? f };
+  return { trip: snap.trip, readonly: true, base: `/s/${r.id}`, snap, place: r.place, get: (n, f) => (n === "reservations" ? snap.reservations : n === "plans" ? snap.plans : n === "places" ? snap.places : n === "settings" ? snap.settings : undefined) ?? f };
 }
 const resList = (ctx) => asRecords(ctx.get("reservations", []));
 const settings = (ctx) => ({ rate: 1.08, speed: 7, ...(ctx.get("settings", {}) || {}) });
@@ -238,7 +240,7 @@ function dayCard(ctx, d) {
   const resv = resList(ctx).filter((r) => r.date === date).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const plans = ((ctx.get("plans", {}) || {})[n] ?? []).slice().sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
   const editing = !ctx.readonly && ui.editDay === n;
-  const body = `<div class="date">Day ${n} · ${esc(dayLabel(trip, n))}</div><h3>${esc(d.title)}</h3>${d.desc ? `<div class="desc">${esc(d.desc)}</div>` : ""}<div class="chips">${d.stops.map((p) => `<span class="chip">${esc(p)}</span>`).join("")}</div>
+  const body = `<div class="date">Day ${n} · ${esc(dayLabel(trip, n))}</div><h3>${esc(d.title)}</h3>${d.desc ? `<div class="desc">${esc(d.desc)}</div>` : ""}<div class="chips">${d.stops.map((p) => `<a class="chip" href="${attr(ctx.base)}/guide/${slugify(p)}" data-link>${esc(p)}</a>`).join("")}</div>
   ${dist ? `<div class="meta-line">${dist}</div>` : ""}${g.path.length || g.pins.length ? `<div class="meta-line" data-wx="${n}"><span>Loading weather…</span></div>` : ""}
   ${resv.length ? `<div class="resv">${resv.map((r) => `<div><span class="badge">${esc(r.type || "Booking")}</span>${r.time ? `<b>${esc(r.time)}</b>` : ""}<span>${esc(r.title)}</span>${r.conf ? `<small>· ${esc(r.conf)}</small>` : ""}</div>`).join("")}</div>` : ""}
   ${plans.length ? `<div class="plan">${plans.map((p) => `<div>${p.time ? `<time>${esc(p.time)}</time>` : `<time></time>`}<span>${esc(p.text)}</span>${ctx.readonly ? "" : `<button type="button" aria-label="Remove plan item" data-act="plan-del" data-day="${n}" data-id="${attr(p.id)}">Remove</button>`}</div>`).join("")}</div>` : ""}
@@ -263,48 +265,16 @@ function overview(ctx) {
 
 // ---- Map ----
 function mapView(ctx) {
-  return `<a class="back" href="${ctx.base}" data-link>← Trip overview</a><div class="eyebrow">${esc(ctx.trip.name.toUpperCase())}</div><section class="section"><h2>Map</h2><div class="note" style="margin-bottom:12px">Pick a day to focus the route. Routes are approximate and positions are for planning, not navigation.</div><div class="mapbar" id="mapbar"></div><div id="tripmap" role="application" aria-label="Map of the itinerary"></div><div class="mapcap" id="mapcap"></div></section>`;
+  return `<a class="back" href="${ctx.base}" data-link>← Trip overview</a><div class="eyebrow">${esc(ctx.trip.name.toUpperCase())}</div><section class="section"><h2>Map</h2><div class="note" style="margin-bottom:12px">Pick a day, click a stop, or press Play trip to follow the whole route. Routes are approximate and positions are for planning, not navigation.</div><div class="mapbar" id="mapbar"></div><div id="tripmap" role="application" aria-label="Map of the itinerary"></div><div class="mapctl"><button class="btn small" id="mplay" type="button" aria-pressed="false">Play trip</button><input id="mscrub" type="range" min="0" max="1000" value="0" aria-label="Trip progress"><span id="mpos" aria-live="polite"></span><label class="speed">Speed <select id="mspeed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label><button class="btn small ghost" id="mfit" type="button">Show all</button></div><div class="mapinfo" id="mapinfo" aria-live="polite"></div><div class="mapcap" id="mapcap"></div></section>`;
 }
-const DAYCOL = ["#d94f3d", "#e08a1e", "#c9a400", "#3a9d5d", "#1f9bb5", "#3a6fd1", "#7a52c9", "#c0408f"];
-function initMap(ctx) {
-  if (mapInst) { mapInst.remove(); mapInst = null; }
-  const el = document.getElementById("tripmap");
-  if (!el) return;
-  if (typeof L === "undefined") { el.innerHTML = '<div class="empty" style="padding:30px">The map library could not load. Check your connection and reload.</div>'; return; }
-  const { trip } = ctx, days = trip.days;
-  const map = (mapInst = L.map("tripmap", { scrollWheelZoom: false }));
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
-  const lines = [], pins = [], all = [];
-  days.forEach((d, i) => {
-    const n = i + 1, col = DAYCOL[i % DAYCOL.length], g = dayGeo(trip, n);
-    if (g.path.length > 1) lines[i] = L.polyline(g.path, { color: col, weight: 4, opacity: 0.9, dashArray: "1 8", lineCap: "round" }).addTo(map);
-    g.pins.forEach((p, j) => {
-      all.push(L.latLng(p.ll));
-      const ic = L.divIcon({ className: "", html: `<div class="pin" style="background:${col}">${j === 0 ? n : ""}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] });
-      const m = L.marker(p.ll, { icon: ic, title: p.name, keyboard: true, riseOnHover: true }).addTo(map).bindPopup(`<b>${esc(p.name)}</b><small>Day ${n} · ${esc(dayLabel(trip, n))}</small><div style="margin:6px 0">${esc(d.title)}</div><a href="${attr(googleMapsUrl(p.ll, p.name))}" target="_blank" rel="noopener">Google Maps</a><a href="${attr(appleMapsUrl(p.ll, p.name))}" target="_blank" rel="noopener">Apple Maps</a>`);
-      (pins[i] ??= []).push(m);
-    });
-  });
-  for (const pl of asRecords(ctx.get("places", []), "text")) {
-    if (!pl.ll) continue;
-    all.push(L.latLng(pl.ll));
-    L.marker(pl.ll, { icon: L.divIcon({ className: "", html: '<div class="pin saved">★</div>', iconSize: [26, 26], iconAnchor: [13, 13] }), title: pl.text }).addTo(map).bindPopup(`<b>${esc(pl.text)}</b><small>Saved place</small>${pl.note ? `<div style="margin:6px 0">${esc(pl.note)}</div>` : ""}<div><a href="${attr(googleMapsUrl(pl.ll, pl.text))}" target="_blank" rel="noopener">Google Maps</a><a href="${attr(appleMapsUrl(pl.ll, pl.text))}" target="_blank" rel="noopener">Apple Maps</a></div>`);
-  }
-  const bar = document.getElementById("mapbar"), cap = document.getElementById("mapcap");
-  const bounds = all.length ? L.latLngBounds(all) : null;
-  if (!bounds) { el.innerHTML = '<div class="empty" style="padding:30px">No places on the map yet. Add places to a day and they appear here.</div>'; return; }
-  function show(n) {
-    bar.innerHTML = [`<button type="button" aria-pressed="${n === 0}" data-d="0">All days</button>`, ...days.map((x, i) => `<button type="button" aria-pressed="${n === i + 1}" data-d="${i + 1}">Day ${i + 1}</button>`)].join("");
-    bar.querySelectorAll("button").forEach((b) => (b.onclick = () => { show(+b.dataset.d); history.replaceState({}, "", location.pathname + (+b.dataset.d ? `?day=${b.dataset.d}` : "")); }));
-    days.forEach((x, i) => { const on = !n || n === i + 1; lines[i]?.setStyle({ opacity: on ? 0.95 : 0.15, weight: on && n ? 5 : 4 }); (pins[i] ?? []).forEach((m) => { m.getElement()?.firstChild.classList.toggle("dim", !on); m.setZIndexOffset(on ? 500 : 0); }); });
-    if (!n) { map.fitBounds(bounds.pad(0.12)); cap.innerHTML = ""; return; }
-    const g = dayGeo(trip, n), pts = [...g.path, ...g.pins.map((p) => p.ll)];
-    if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.25), { maxZoom: 12 });
-    cap.innerHTML = dayCard({ ...ctx, readonly: true }, days[n - 1]).replace(/<div class="dayacts">.*?<\/div>(?=<\/div>|<\/article>)/s, "");
-  }
-  const want = +new URLSearchParams(location.search).get("day");
-  show(want >= 1 && want <= days.length ? want : 0);
-  setTimeout(() => map.invalidateSize(), 50);
+function mapEnv(ctx) {
+  return {
+    ctx, dayGeo, esc, attr, savedPlaces: asRecords(ctx.get("places", []), "text"),
+    placeFor: (name) => (ctx.trip.builtin ? PLACES[name] ?? null : null),
+    wikiFor: (name) => wikiForPlace(ctx.trip, name),
+    guideHref: (name) => `${ctx.base}/guide/${slugify(name)}`, slugOf: slugify,
+    dayCardHtml: (d) => dayCard({ ...ctx, readonly: true }, d).replace(/<div class="dayacts">.*?<\/div>(?=<\/div>|<\/article>)/s, ""),
+  };
 }
 
 // ---- Lists ----
@@ -343,6 +313,79 @@ function expensesView(ctx) {
   <div class="list">${list.length ? list.map((e) => `<div class="item"><div class="main"><b>${esc(e.d)}</b><span class="sub">${esc(e.cat || "Other")}${e.day ? ` · Day ${esc(e.day)}` : ""}</span></div><b>${money(e.a, e.cur || "EUR")}</b><div class="acts"><button class="btn small danger" data-act="exp-del" data-id="${attr(e.id)}" aria-label="Delete ${attr(e.d)}">Delete</button></div></div>`).join("") : '<div class="empty">Nothing added yet.</div>'}</div></section>`;
 }
 
+
+// ---- Place guides ----
+// Each stop has a guide: written history, what to see and tips for the Italy stops, and a live summary and photo from Wikipedia for any
+// place (including the stops of trips you create).
+async function wikiInfo(title) {
+  const key = `travel-wiki-v1:${title}`;
+  try { const c = JSON.parse(lsGet(key)); if (c && Date.now() - c.at < 30 * 864e5) return c.v; } catch {}
+  let j;
+  for (let a = 0; ; a++) {
+    try { j = await getJson("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title.replace(/ /g, "_"))); break; }
+    catch (e) { if (a >= 2 || e.status === 404) throw e; await new Promise((r) => setTimeout(r, 1500 * (a + 1))); } // Wikipedia asks busy clients to slow down; try again shortly
+  }
+  if (j.type === "disambiguation") return null;
+  const v = { title: j.title, extract: j.extract ?? "", thumb: j.thumbnail?.source ?? "", url: j.content_urls?.desktop?.page ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}` };
+  lsSet(key, JSON.stringify({ at: Date.now(), v }));
+  return v;
+}
+async function wikiSearch(q) {
+  try { const r = await getJson("https://en.wikipedia.org/w/api.php?" + new URLSearchParams({ action: "opensearch", search: q, limit: "1", format: "json", origin: "*" })); return r[1]?.[0] ?? null; } catch { return null; }
+}
+async function wikiForPlace(trip, name) {
+  const curated = trip.builtin ? PLACES[name] : null;
+  try {
+    if (curated?.wiki) return await wikiInfo(curated.wiki);
+    const t = (await wikiSearch(name)) ?? (name.includes(",") ? await wikiSearch(name.split(",")[0].trim()) : null);
+    return t ? await wikiInfo(t) : null;
+  } catch { return null; }
+}
+/** The trip's places in the order they are visited, each with the days it appears on. */
+function tripStops(trip) {
+  const by = new Map();
+  trip.days.forEach((d) => d.stops.forEach((name) => { const e = by.get(name) ?? { name, slug: slugify(name), days: [] }; if (!e.days.includes(d.n)) e.days.push(d.n); by.set(name, e); }));
+  return [...by.values()];
+}
+const stopLl = (trip, name) => (trip.geo?.places ?? {})[name] ?? null;
+
+function guideView(ctx) {
+  const { trip } = ctx, stops = tripStops(trip);
+  if (!ctx.place) {
+    return `<div class="eyebrow">${esc(trip.name.toUpperCase())}</div><section class="section"><h2>Place guides</h2>${note("The story of each stop: history, what to see, and tips. Tap a place for its guide.")}<div class="guides">${stops.map((s) => { const c = trip.builtin ? PLACES[s.name] : null; return `<a class="gcard" href="${attr(ctx.base)}/guide/${s.slug}" data-link><div class="gthumb" data-wiki="${attr(s.name)}" aria-hidden="true"></div><div class="gbody"><b>${esc(s.name)}</b><span>${s.days.length > 1 ? "Days" : "Day"} ${s.days.join(", ")}${c?.area ? ` · ${esc(c.area)}` : ""}</span>${c ? `<p>${esc(c.tagline)}</p>` : ""}</div></a>`; }).join("") || '<div class="empty">No places yet. Add places to a day and they get a guide.</div>'}</div></section>`;
+  }
+  const i = stops.findIndex((s) => s.slug === ctx.place);
+  if (i < 0) return `<a class="back" href="${ctx.base}/guide" data-link>← All place guides</a><div class="banner">That place is not on this trip.</div>`;
+  const stop = stops[i], c = trip.builtin ? PLACES[stop.name] : null, ll = stopLl(trip, stop.name), prev = stops[i - 1], next = stops[i + 1];
+  const list = (items, cls = "") => `<ul class="glist ${cls}">${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+  const notes = (ctx.get("placenotes", {}) || {})[stop.slug] ?? "";
+  return `<a class="back" href="${ctx.base}/guide" data-link>← All place guides</a>
+  <div class="eyebrow">${esc(c?.area ?? "PLACE GUIDE")}</div><h1 class="gh">${esc(stop.name)}</h1>${c ? `<p class="gtag">${esc(c.tagline)}</p>` : ""}
+  <div class="gactions">${ll ? `<a class="btn" href="${attr(ctx.base)}/map?place=${stop.slug}" data-link>Show on the map</a><a class="btn ghost" href="${attr(googleMapsUrl(ll, stop.name))}" target="_blank" rel="noopener">Google Maps</a><a class="btn ghost" href="${attr(appleMapsUrl(ll, stop.name))}" target="_blank" rel="noopener">Apple Maps</a>` : ""}</div>
+  <div class="gphoto" id="gphoto" hidden></div>
+  <section class="panel"><h3>About</h3><div id="gabout" class="gabout"><span class="note">Loading from Wikipedia…</span></div></section>
+  ${c ? `<section class="panel"><h3>History</h3>${c.history.map((t) => `<p>${esc(t)}</p>`).join("")}</section><section class="panel"><h3>What to see and do</h3>${list(c.see)}</section><section class="panel"><h3>Good to know</h3>${list(c.tips)}<p class="note">Opening times, prices, rules and sea conditions change. Check them close to the day.</p></section>${c.fact ? `<section class="panel gfact"><h3>Did you know</h3><p>${esc(c.fact)}</p></section>` : ""}` : `<section class="panel"><p class="note">There is no written guide for this place yet. The summary above comes from Wikipedia, and your own notes go below.</p></section>`}
+  <section class="panel"><h3>On your trip</h3><div class="gdays">${stop.days.map((n) => `<a class="chip" href="${attr(ctx.base)}#day-${n}" data-link>Day ${n} · ${esc(dayLabel(trip, n))} · ${esc(trip.days[n - 1].title)}</a>`).join("")}</div></section>
+  ${ctx.readonly ? "" : `<section class="panel"><h3>Your notes</h3><textarea id="pnotes" rows="4" placeholder="Reservations to make, things to remember…" aria-label="Your notes about ${attr(stop.name)}" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:11px;background:#fbfcfb">${esc(notes)}</textarea></section>`}
+  <nav class="gnav" aria-label="Neighbouring places">${prev ? `<a href="${attr(ctx.base)}/guide/${prev.slug}" data-link>← ${esc(prev.name)}</a>` : "<span></span>"}${next ? `<a href="${attr(ctx.base)}/guide/${next.slug}" data-link>${esc(next.name)} →</a>` : ""}</nav>`;
+}
+async function fillGuide(ctx) {
+  const { trip } = ctx;
+  if (!ctx.place) {
+    const els = [...document.querySelectorAll("[data-wiki]")];
+    for (let i = 0; i < els.length; i += 3) await Promise.all(els.slice(i, i + 3).map(async (el) => { const w = await wikiForPlace(trip, el.dataset.wiki); if (w?.thumb && el.isConnected) el.style.backgroundImage = `url("${w.thumb.replace(/"/g, "%22")}")`; }));
+    return;
+  }
+  const stop = tripStops(trip).find((s) => s.slug === ctx.place);
+  if (!stop) return;
+  const w = await wikiForPlace(trip, stop.name), about = document.getElementById("gabout");
+  if (!about?.isConnected) return;
+  if (!w) { about.innerHTML = '<span class="note">No Wikipedia summary found for this place.</span>'; return; }
+  about.innerHTML = `${esc(w.extract)}<div class="note" style="margin-top:8px">From <a href="${attr(w.url)}" target="_blank" rel="noopener">Wikipedia</a> (CC BY-SA 4.0). Photo: Wikimedia Commons.</div>`;
+  const ph = document.getElementById("gphoto");
+  if (ph && w.thumb) { ph.hidden = false; ph.innerHTML = `<img src="${attr(w.thumb)}" alt="${attr(stop.name)}" loading="lazy">`; }
+}
+
 // ---- Share and export ----
 function snapshot(ctx, opts) {
   const res = resList(ctx).map((r) => ({ id: r.id, type: r.type, title: r.title, date: r.date, time: r.time, ...(opts.conf ? { conf: r.conf, note: r.note, url: r.url } : {}) }));
@@ -361,7 +404,7 @@ function shareView(ctx) {
 // Render and events
 // ---------------------------------------------------------------------------------------------------------------------
 const isEditing = () => { const a = document.activeElement; return !!a && app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== "checkbox"; };
-const VIEWS = { "": overview, map: mapView, reservations: reservationsView, "saved-places": placesView, packing: packingView, expenses: expensesView, documents: documentsView, notes: notesView, share: shareView };
+const VIEWS = { "": overview, map: mapView, guide: guideView, reservations: reservationsView, "saved-places": placesView, packing: packingView, expenses: expensesView, documents: documentsView, notes: notesView, share: shareView };
 
 async function loadShare(id) {
   try { shares.set(id, await getJson(`/api/share/${id}`)); } catch { shares.set(id, "missing"); }
@@ -369,7 +412,7 @@ async function loadShare(id) {
 }
 function render() {
   const r = route();
-  if (mapInst && !(r.sec === "map")) { mapInst.remove(); mapInst = null; }
+  if (r.sec !== "map") destroyMap();
   let ctx = null, html;
   if (r.kind === "home") { document.title = "Travel"; html = home(); }
   else if (r.kind === "share") {
@@ -382,8 +425,11 @@ function render() {
   app.innerHTML = html;
   paintSync();
   if (!ctx) return;
-  if (r.sec === "map") initMap(ctx);
+  if (r.sec === "map") initTripMap(mapEnv(ctx));
   else if (r.sec === "") fillWeather(ctx.trip);
+  else if (r.sec === "guide") fillGuide(ctx);
+  const pn = document.getElementById("pnotes");
+  if (pn && !ctx.readonly) { let t; pn.oninput = () => { clearTimeout(t); t = setTimeout(() => edit("placenotes", {}, (o) => { o[ctx.place] = pn.value; }, false), 400); }; }
   const n = document.getElementById("notes");
   if (n && !ctx.readonly) { let t; n.oninput = () => { clearTimeout(t); t = setTimeout(() => put(ctx.trip.id, "notes", n.value), 400); }; }
 }
@@ -391,7 +437,7 @@ function render() {
 const cur = () => { const r = route(); return r.kind === "trip" ? context(r) : null; };
 const updateTrip = (trip) => { setTrips(db, customTrips().map((t) => (t.id === trip.id ? trip : t))); persist(); };
 const num = (v) => { const x = Number(String(v).replace(",", ".")); return Number.isFinite(x) ? x : NaN; };
-const edit = (name, fallback, fn) => { const c = cur(); const v = structuredClone(c.get(name, fallback)); const out = fn(v) ?? v; put(c.trip.id, name, out); render(); };
+const edit = (name, fallback, fn, rerender = true) => { const c = cur(); const v = structuredClone(c.get(name, fallback)); const out = fn(v) ?? v; put(c.trip.id, name, out); if (rerender) render(); };
 const rec = (name, field) => asRecords(cur().get(name, []), field);
 
 async function findOnMap(names, trip) {

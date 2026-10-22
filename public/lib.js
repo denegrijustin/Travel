@@ -1,6 +1,6 @@
 // Pure helpers shared by the app, the Worker and the tests. No DOM, no fetch.
 
-export const SECTIONS = ["reservations", "places", "packing", "documents", "notes", "expenses", "plans", "settings"];
+export const SECTIONS = ["reservations", "places", "packing", "documents", "notes", "expenses", "plans", "settings", "placenotes"];
 
 export const emptyDb = () => ({ v: 1, trips: { ts: 0, v: [] }, data: {} });
 
@@ -111,3 +111,66 @@ export const appleMapsUrl = (ll, name) => `https://maps.apple.com/?ll=${ll[0]},$
 /** Moves legacy string lists to records. */
 export const asRecords = (list, field = "title") => (Array.isArray(list) ? list : []).map((x, i) => (typeof x === "string" ? { id: "m" + i, [field]: x } : x));
 export const uid = () => Math.random().toString(36).slice(2, 10);
+
+// ---- Map tour: the whole trip as one connected path ----
+const deg = (r) => (r * 180) / Math.PI;
+/** Compass bearing in degrees from `a` to `b` (0 = north, 90 = east). */
+export function bearing(a, b) {
+  const p1 = rad(a[0]), p2 = rad(b[0]), dl = rad(b[1] - a[1]);
+  const y = Math.sin(dl) * Math.cos(p2), x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return (deg(Math.atan2(y, x)) + 360) % 360;
+}
+export const sameLl = (a, b) => !!a && !!b && Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6;
+export const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+
+/**
+ * Joins each day's path into one continuous path, in order. Where a day starts somewhere other than where the last one ended, a "link"
+ * leg joins them. `days` = [{ n, path: [[lat,lon],...], pins: [{ name, ll }] }]. Returns the vertices, the distance (nautical miles) along
+ * the path at each vertex, the total, where each stop falls, and where each day starts and ends. A pin that is not on its day's path is a
+ * side trip ("spur") and is placed at the end of that day.
+ */
+export function buildTour(days) {
+  const verts = [], dayAt = {};
+  let prevEnd = null;
+  for (const d of days) {
+    const pts = d.path?.length ? d.path : (d.pins ?? []).map((p) => p.ll);
+    if (!pts.length) continue;
+    const firstIdx = verts.length;
+    let link = false, rest = pts;
+    if (prevEnd) {
+      if (haversineNm(prevEnd, pts[0]) > 0.2) { verts.push({ ll: pts[0], day: d.n, kind: "link" }); link = true; }
+      rest = pts.slice(1);
+    } else { verts.push({ ll: pts[0], day: d.n, kind: "day" }); rest = pts.slice(1); }
+    for (const ll of rest) verts.push({ ll, day: d.n, kind: "day" });
+    dayAt[d.n] = { firstIdx: prevEnd && !link ? Math.max(0, firstIdx - 1) : link ? firstIdx - 1 : firstIdx, lastIdx: verts.length - 1 };
+    if (dayAt[d.n].firstIdx < 0) dayAt[d.n].firstIdx = 0;
+    prevEnd = pts.at(-1);
+  }
+  const cum = [0];
+  for (let i = 1; i < verts.length; i++) cum[i] = cum[i - 1] + haversineNm(verts[i - 1].ll, verts[i].ll);
+  const stops = [];
+  for (const d of days) {
+    if (!dayAt[d.n]) continue;
+    const { firstIdx, lastIdx } = dayAt[d.n];
+    (d.pins ?? []).forEach((p, order) => {
+      let idx = -1;
+      for (let i = firstIdx; i <= lastIdx; i++) if (sameLl(verts[i].ll, p.ll)) { idx = i; break; }
+      stops.push({ name: p.name, ll: p.ll, day: d.n, order, spur: idx < 0, idx: idx < 0 ? lastIdx : idx, at: cum[idx < 0 ? lastIdx : idx] });
+    });
+  }
+  stops.sort((a, b) => a.at - b.at || a.day - b.day || a.order - b.order);
+  const dayRange = Object.fromEntries(Object.entries(dayAt).map(([n, v]) => [n, { start: cum[v.firstIdx], end: cum[v.lastIdx], firstIdx: v.firstIdx, lastIdx: v.lastIdx }]));
+  return { verts, cum, total: cum.at(-1) ?? 0, stops, days: dayRange };
+}
+
+/** The position `dist` nautical miles along the tour, with the heading and the leg's day and kind. */
+export function pointAt(tour, dist) {
+  const { verts, cum } = tour;
+  if (!verts.length) return null;
+  const d = Math.max(0, Math.min(dist, tour.total));
+  let lo = 1, hi = verts.length - 1;
+  if (verts.length === 1) return { ll: verts[0].ll, seg: 0, heading: 0, day: verts[0].day, kind: verts[0].kind };
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid] < d) lo = mid + 1; else hi = mid; }
+  const a = verts[lo - 1], b = verts[lo], len = cum[lo] - cum[lo - 1], t = len > 0 ? (d - cum[lo - 1]) / len : 1;
+  return { ll: [a.ll[0] + (b.ll[0] - a.ll[0]) * t, a.ll[1] + (b.ll[1] - a.ll[1]) * t], seg: lo, heading: bearing(a.ll, b.ll), day: b.day, kind: b.kind };
+}

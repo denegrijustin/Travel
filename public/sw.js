@@ -1,7 +1,7 @@
 // Offline support: the app files and photos are cached after the first visit; map tiles you have looked at are kept too.
-const V = "travel-v1";
+const V = "travel-v2";
 const TILES = "travel-tiles-v1";
-const SHELL = ["/", "/app.css", "/app.js", "/lib.js", "/data.js", "/manifest.webmanifest", "/icons/icon.svg", "/icons/icon-192.png"];
+const SHELL = ["/", "/app.css", "/app.js", "/lib.js", "/data.js", "/map.js", "/places.js", "/manifest.webmanifest", "/icons/icon.svg", "/icons/icon-192.png"];
 
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => {
@@ -18,7 +18,7 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(fetch(req).then((r) => { const copy = r.clone(); caches.open(V).then((c) => c.put("/", copy)); return r; }).catch(() => caches.match("/")));
     return;
   }
-  if (url.hostname === "tile.openstreetmap.org") {
+  if (url.hostname === "tile.openstreetmap.org" || url.hostname === "server.arcgisonline.com") {
     e.respondWith(caches.open(TILES).then(async (c) => {
       const hit = await c.match(req);
       if (hit) return hit;

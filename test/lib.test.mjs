@@ -72,3 +72,45 @@ test("canon gives the same text whatever the key order", () => {
   assert.equal(canon({ b: 1, a: { d: 2, c: [{ y: 1, x: 2 }] } }), canon({ a: { c: [{ x: 2, y: 1 }], d: 2 }, b: 1 }));
   assert.notEqual(canon({ a: 1 }), canon({ a: 2 }));
 });
+
+import { bearing, sameLl, easeInOut, buildTour, pointAt } from "../public/lib.js";
+test("bearing: north, east, south, west", () => {
+  assert.ok(Math.abs(bearing([0, 0], [1, 0]) - 0) < 1e-6);
+  assert.ok(Math.abs(bearing([0, 0], [0, 1]) - 90) < 1e-6);
+  assert.ok(Math.abs(bearing([1, 0], [0, 0]) - 180) < 1e-6);
+  assert.ok(Math.abs(bearing([0, 1], [0, 0]) - 270) < 1e-6);
+});
+test("easing runs from 0 to 1 and is symmetric", () => {
+  assert.equal(easeInOut(0), 0); assert.equal(easeInOut(1), 1); assert.equal(easeInOut(0.5), 0.5);
+  assert.ok(Math.abs(easeInOut(0.25) + easeInOut(0.75) - 1) < 1e-9);
+});
+const A = [40, 14], B = [40.1, 14], C = [40.1, 14.1], D = [40.3, 14.3];
+test("tour: days that meet are joined without a link, days that do not get one", () => {
+  const t = buildTour([{ n: 1, path: [A, B], pins: [{ name: "A", ll: A }, { name: "B", ll: B }] }, { n: 2, path: [B, C], pins: [{ name: "C", ll: C }] }, { n: 3, path: [D], pins: [{ name: "D", ll: D }] }]);
+  assert.equal(t.verts.length, 4 + 0); // A, B, C, then D as a link
+  assert.deepEqual(t.verts.map((v) => v.kind), ["day", "day", "day", "link"]);
+  assert.ok(Math.abs(t.total - (haversineNm(A, B) + haversineNm(B, C) + haversineNm(C, D))) < 1e-9);
+  assert.deepEqual(t.stops.map((s) => s.name), ["A", "B", "C", "D"]);
+  assert.ok(t.stops.every((s) => !s.spur));
+  assert.equal(t.days[2].start, t.stops[1].at); // day 2 starts where day 1 ended
+  assert.equal(t.days[3].start, t.days[2].end); // the link belongs to day 3
+});
+test("tour: a pin off the path is a side trip placed at the end of its day", () => {
+  const off = [41, 15];
+  const t = buildTour([{ n: 1, path: [A, B], pins: [{ name: "A", ll: A }, { name: "Side", ll: off }] }]);
+  const side = t.stops.find((s) => s.name === "Side");
+  assert.ok(side.spur); assert.equal(side.at, t.total);
+});
+test("tour: a day with no path uses its pins; empty days are skipped", () => {
+  const t = buildTour([{ n: 1, path: [], pins: [{ name: "A", ll: A }] }, { n: 2, path: [], pins: [] }, { n: 3, path: [], pins: [{ name: "B", ll: B }] }]);
+  assert.equal(t.verts.length, 2); assert.equal(t.days[2], undefined);
+  assert.equal(buildTour([]).total, 0);
+});
+test("pointAt walks along the path with a heading", () => {
+  const t = buildTour([{ n: 1, path: [A, B, C], pins: [] }]);
+  const start = pointAt(t, 0), end = pointAt(t, t.total + 5), mid = pointAt(t, haversineNm(A, B) / 2);
+  assert.ok(sameLl(start.ll, A) && sameLl(end.ll, C));
+  assert.ok(Math.abs(mid.ll[0] - 40.05) < 1e-3 && Math.abs(mid.heading - 0) < 1e-6);
+  assert.ok(Math.abs(pointAt(t, haversineNm(A, B) + 0.5).heading - 90) < 1);
+  assert.equal(pointAt({ verts: [], cum: [], total: 0 }, 1), null);
+});
