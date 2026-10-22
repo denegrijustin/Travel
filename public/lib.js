@@ -174,3 +174,17 @@ export function pointAt(tour, dist) {
   const a = verts[lo - 1], b = verts[lo], len = cum[lo] - cum[lo - 1], t = len > 0 ? (d - cum[lo - 1]) / len : 1;
   return { ll: [a.ll[0] + (b.ll[0] - a.ll[0]) * t, a.ll[1] + (b.ll[1] - a.ll[1]) * t], seg: lo, heading: bearing(a.ll, b.ll), day: b.day, kind: b.kind };
 }
+
+/** Points along the great circle from `a` to `b` (both [lat, lon]), `n` segments, for drawing a flight. */
+export function arcPoints(a, b, n = 48) {
+  const [p1, l1, p2, l2] = [rad(a[0]), rad(a[1]), rad(b[0]), rad(b[1])];
+  const d = 2 * Math.asin(Math.sqrt(Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin((l2 - l1) / 2) ** 2));
+  if (!d) return [a, b];
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const f = i / n, A = Math.sin((1 - f) * d) / Math.sin(d), B = Math.sin(f * d) / Math.sin(d);
+    const x = A * Math.cos(p1) * Math.cos(l1) + B * Math.cos(p2) * Math.cos(l2), y = A * Math.cos(p1) * Math.sin(l1) + B * Math.cos(p2) * Math.sin(l2), z = A * Math.sin(p1) + B * Math.sin(p2);
+    out.push([deg(Math.atan2(z, Math.hypot(x, y))), deg(Math.atan2(y, x))]);
+  }
+  return out;
+}

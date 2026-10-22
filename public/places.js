@@ -199,6 +199,60 @@ export const PLACES = {
     tips: ["Cathedral entry has a dress code: cover shoulders and knees.", "The town is crowded in the middle of the day when coaches arrive. Early morning and evening are far calmer.", "Amalfi has the sea access, so it is a natural stop for provisioning and a restaurant dinner."],
     fact: "The Amalfi tradition of making paper from rags goes back to the 12th century, and handmade paper is still sold here.",
   },
+  Rome: {
+    area: "Lazio", wiki: "Rome",
+    tagline: "The Eternal City, where almost every street corner is a few thousand years deep.",
+    history: [
+      "According to legend Romulus founded Rome in 753 BC on the Palatine Hill. From a small city on the Tiber it grew into the centre of a republic and then an empire that, at its height, ruled the whole Mediterranean.",
+      "After the empire in the West fell in the 5th century, Rome shrank, but the popes kept it a spiritual capital, and Renaissance and baroque patrons rebuilt it with churches, fountains and piazzas. It became the capital of unified Italy in 1871.",
+    ],
+    see: ["The Colosseum, the Roman Forum and the Palatine Hill", "The Pantheon and the piazzas around it", "Trevi Fountain, best early in the morning", "St Peter's Basilica and the Vatican Museums", "A walk through Trastevere in the evening"],
+    tips: ["With a day and a half, group sights by area on foot and book the Colosseum and Vatican entries ahead.", "Churches and the Vatican require covered shoulders and knees.", "Watch for pickpockets around Termini, the Colosseum and on crowded buses.", "Roma Termini is the main train station; the Leonardo Express runs from there to Fiumicino airport in about 30 minutes."],
+    fact: "Rome has more fountains and obelisks than almost any other city; the water of its ancient aqueducts still feeds many of them.",
+  },
+  Colosseum: {
+    area: "Rome · Lazio", wiki: "Colosseum",
+    tagline: "The largest amphitheatre ever built, still standing after nearly two thousand years.",
+    history: [
+      "Emperor Vespasian began the Flavian Amphitheatre around AD 70, on the site of Nero's lake garden, and his son Titus opened it in AD 80 with games that lasted 100 days.",
+      "It held tens of thousands of spectators for gladiator fights, animal hunts and spectacles. Earthquakes and centuries of stone-robbing damaged it, and it is now a symbol of the city.",
+    ],
+    see: ["The arena floor and the underground passages, on special tickets", "The Arch of Constantine next door", "The Roman Forum and Palatine Hill on the same ticket"],
+    tips: ["Book timed entry in advance in summer.", "Go first thing in the morning or late in the afternoon to avoid heat and queues."],
+    fact: "The name probably comes from a colossal statue of Nero that once stood nearby, not from the building's size.",
+  },
+  Pantheon: {
+    area: "Rome · Lazio", wiki: "Pantheon, Rome",
+    tagline: "A temple to all the gods, topped by the world's largest unreinforced concrete dome.",
+    history: [
+      "Agrippa built the first Pantheon around 27 BC. The present building was completed under Hadrian in about AD 126, and it became a Christian church in AD 609.",
+      "Its dome, with a round opening called the oculus, stayed the largest in the world for more than a thousand years. Raphael and Italian kings are buried inside.",
+    ],
+    see: ["The oculus and the pool of light it casts", "The tomb of Raphael", "Piazza della Rotonda outside"],
+    tips: ["Entry now needs a ticket or reservation; check the current rules.", "It remains a church, so dress modestly and keep quiet."],
+    fact: "Rain falls through the oculus, and small drains in the floor carry it away.",
+  },
+  "Trevi Fountain": {
+    area: "Rome · Lazio", wiki: "Trevi Fountain",
+    tagline: "The baroque fountain where visitors toss coins over their shoulder.",
+    history: [
+      "The fountain marks the end of the Aqua Virgo aqueduct, which brought water to Rome from about 19 BC. Nicola Salvi's design was finished in 1762.",
+    ],
+    see: ["The central figure of Oceanus on a shell chariot", "The sculpted sea horses, one calm and one wild"],
+    tips: ["It is very crowded in the afternoon and evening; early morning is best.", "Throwing a coin is a tradition; local rules about the fountain change, so follow the signs."],
+    fact: "Thousands of euros in coins are collected from the fountain and given to charity.",
+  },
+  "Vatican City": {
+    area: "Rome", wiki: "Vatican City",
+    tagline: "The world's smallest country, home to St Peter's and the Sistine Chapel.",
+    history: [
+      "The Vatican sits where tradition places Saint Peter's tomb. Constantine built a basilica here in the 4th century, replaced by the present St Peter's, finished in 1626.",
+      "The Lateran Treaty of 1929 made Vatican City an independent state, about 44 hectares in size.",
+    ],
+    see: ["St Peter's Basilica and the climb up the dome", "The Vatican Museums and Michelangelo's Sistine Chapel ceiling", "St Peter's Square"],
+    tips: ["Book Vatican Museums tickets well ahead; lines are long.", "Strict dress code: covered shoulders and knees.", "The museums close on Sundays except the last Sunday of the month."],
+    fact: "The Swiss Guard, who protect the pope, have served since 1506.",
+  },
 };
 
 export const slugify = (s) => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
