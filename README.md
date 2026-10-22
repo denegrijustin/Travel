@@ -27,3 +27,7 @@ node test/dev-server.mjs 4196  # preview at http://127.0.0.1:4196 with an in-mem
 - Photos are from Wikimedia Commons; each card links to its credit.
 - Map tiles are OpenStreetMap's public tile server (light personal use); the satellite layer is Esri World Imagery. Place search uses OpenStreetMap's Nominatim, one request at a time.
 - KV free tier allows 1,000 writes a day; the app writes only when something changed.
+
+## Getting there and back
+
+The Italy 2027 trip includes the flights (Kansas City → Toronto → Naples, Rome → Chicago → Kansas City) and the trains (Naples → Salerno, Salerno → Rome), plus a day and a half in Rome. They are defined in `ITALY_EXTRA` in `public/data.js`; the dates are assumptions to adjust there. The map's **Show flights** button draws the flights as great-circle arcs, and the tour marker becomes a train on rail days.

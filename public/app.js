@@ -1,5 +1,5 @@
 import { SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
-import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS } from "./data.js";
+import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS, ITALY_EXTRA } from "./data.js";
 import { PLACES, slugify } from "./places.js";
 import { initTripMap, destroyMap } from "./map.js";
 
@@ -37,11 +37,15 @@ const put = (tripId, name, value) => { setSection(db, tripId, name, value); pers
 // ---------------------------------------------------------------------------------------------------------------------
 const ALIAS = { 1: { Salerno: "Marina d'Arechi" } }; // Italy: the first "Salerno" is the marina the boat leaves from
 function italyTrip() {
-  const raw = ITALY_RAW[0];
+  const raw = ITALY_RAW[0], X = ITALY_EXTRA;
+  const days = [
+    ...raw.itinerary.map(([, title, stops, desc], i) => ({ n: i + 1, title, desc, stops, photo: ITALY_PHOTOS[i + 1] ?? null, mode: "sail" })),
+    ...X.days.map(([, title, stops, desc, mode], i) => ({ n: raw.itinerary.length + i + 1, title, desc, stops, photo: ITALY_PHOTOS[raw.itinerary.length + i + 1] ?? null, mode })),
+  ];
   return {
-    id: raw.id, name: raw.name, start: "2027-06-18", builtin: true, mode: "sail", places: 9, // the nine towns and islands; the chips list every stop
-    days: raw.itinerary.map(([, title, stops, desc], i) => ({ n: i + 1, title, desc, stops, photo: ITALY_PHOTOS[i + 1] ?? null })),
-    geo: ITALY_GEO,
+    id: raw.id, name: raw.name, start: "2027-06-18", builtin: true, mode: "sail", places: 10, final: "Kansas City", // the ten towns, islands and cities; the chips list every stop
+    days, legs: X.legs, airports: X.airports,
+    geo: { ...ITALY_GEO, places: { ...ITALY_GEO.places, ...X.places }, route: { ...ITALY_GEO.route, ...X.route } },
   };
 }
 const customTrips = () => db.trips.v;
@@ -232,16 +236,19 @@ function home() {
 
 // ---- Overview and day cards ----
 function photoOf(d) { const p = d.photo; if (!p) return null; if (typeof p === "string") { const u = safeUrl(p); return u ? { src: u, credit: "" } : null; } return p; }
+const legsOn = (trip, iso) => (trip.legs ?? []).filter((l) => l.date === iso);
+const legHtml = (l) => `<div class="leg"><span class="badge">${esc(l.kind)}</span><div><b>${esc(l.title)}</b><small>${esc(l.note)}</small></div></div>`;
 function dayCard(ctx, d) {
   const { trip } = ctx, n = d.n, date = dayDate(trip, n), g = dayGeo(trip, n), ph = photoOf(d);
   const speed = settings(ctx).speed;
-  const nm = g.path.length > 1 ? pathNm(g.path) : 0;
-  const dist = nm < 0.5 ? "" : trip.mode === "sail" ? `<span>About ${Math.round(nm)} nm · ${fmtHours(nm / speed)} at ${speed} kn</span>` : `<span>About ${Math.round(nm * 1.15078)} mi in a straight line</span>`;
+  const nm = g.path.length > 1 ? pathNm(g.path) : 0, mode = d.mode ?? trip.mode;
+  const dist = nm < 0.5 ? "" : mode === "sail" ? `<span>About ${Math.round(nm)} nm · ${fmtHours(nm / speed)} at ${speed} kn</span>` : `<span>About ${Math.round(nm * 1.15078)} mi ${mode === "rail" ? "by rail, as the crow flies" : "in a straight line"}</span>`;
   const resv = resList(ctx).filter((r) => r.date === date).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const plans = ((ctx.get("plans", {}) || {})[n] ?? []).slice().sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
   const editing = !ctx.readonly && ui.editDay === n;
   const body = `<div class="date">Day ${n} · ${esc(dayLabel(trip, n))}</div><h3>${esc(d.title)}</h3>${d.desc ? `<div class="desc">${esc(d.desc)}</div>` : ""}<div class="chips">${d.stops.map((p) => `<a class="chip" href="${attr(ctx.base)}/guide/${slugify(p)}" data-link>${esc(p)}</a>`).join("")}</div>
   ${dist ? `<div class="meta-line">${dist}</div>` : ""}${g.path.length || g.pins.length ? `<div class="meta-line" data-wx="${n}"><span>Loading weather…</span></div>` : ""}
+  ${legsOn(trip, date).map(legHtml).join("")}
   ${resv.length ? `<div class="resv">${resv.map((r) => `<div><span class="badge">${esc(r.type || "Booking")}</span>${r.time ? `<b>${esc(r.time)}</b>` : ""}<span>${esc(r.title)}</span>${r.conf ? `<small>· ${esc(r.conf)}</small>` : ""}</div>`).join("")}</div>` : ""}
   ${plans.length ? `<div class="plan">${plans.map((p) => `<div>${p.time ? `<time>${esc(p.time)}</time>` : `<time></time>`}<span>${esc(p.text)}</span>${ctx.readonly ? "" : `<button type="button" aria-label="Remove plan item" data-act="plan-del" data-day="${n}" data-id="${attr(p.id)}">Remove</button>`}</div>`).join("")}</div>` : ""}
   ${!ctx.readonly && ui.planDay === n ? `<form class="dayedit" data-form="plan-add" data-day="${n}"><div class="row"><input name="time" type="time" aria-label="Time" style="max-width:130px"><input name="text" required maxlength="140" placeholder="What are you doing?" aria-label="Plan item" autofocus></div><div class="actions" style="margin:0"><button class="btn small" type="submit">Add</button><button class="btn small ghost" type="button" data-act="plan-toggle" data-day="${n}">Cancel</button></div></form>` : ""}
@@ -255,9 +262,10 @@ function dayEditForm(ctx, d) {
   return `<form class="dayedit" data-form="day-edit" data-day="${d.n}"><label>Title<input name="title" required maxlength="80" value="${attr(d.title)}"></label><label>What's planned<textarea name="desc" rows="3" maxlength="600">${esc(d.desc)}</textarea></label><label>Places, one per line (add the city so they land in the right spot, like "Belém Tower, Lisbon")<textarea name="stops" rows="3" maxlength="400">${esc(d.stops.join("\n"))}</textarea></label><label>Photo link (optional)<input name="photo" type="url" value="${attr(typeof d.photo === "string" ? d.photo : "")}" placeholder="https://…"></label><div class="actions" style="margin:0"><button class="btn small" type="submit">Save day</button><button class="btn small ghost" type="button" data-act="day-cancel">Cancel</button></div></form>`;
 }
 function overview(ctx) {
-  const { trip } = ctx, n = trip.days.length, last = trip.days.at(-1)?.stops.at(-1) ?? "—";
+  const { trip } = ctx, n = trip.days.length, last = trip.final ?? trip.days.at(-1)?.stops.at(-1) ?? "—";
   const s = settings(ctx);
   return `${ctx.readonly ? `<div class="banner">This is a shared, read-only copy of the plan${ctx.snap?.createdAt ? ` made ${esc(new Date(ctx.snap.createdAt).toLocaleDateString())}` : ""}. Changes made after that are not shown.</div>` : `<a class="back" href="/" data-link>← All trips</a>`}<div class="eyebrow">TRIP OVERVIEW</div><section class="hero"><h1>${esc(trip.name)}</h1><p>${esc(tripDates(trip))}</p><div class="stats"><div class="stat">Duration<b>${n} day${n === 1 ? "" : "s"}</b></div><div class="stat">Destinations<b>${uniqueStops(trip)} place${uniqueStops(trip) === 1 ? "" : "s"}</b></div><div class="stat">Final destination<b>${esc(last)}</b></div></div></section>
+  ${trip.legs?.length ? `<section class="section"><h2>Getting there and back</h2><div class="legs">${trip.legs.map((l) => `<div class="leg"><span class="badge">${esc(l.kind)}</span><div><b>${esc(l.title)}</b><small>${esc(fmtDate(l.date, { weekday: "short", month: "short", day: "numeric" }))} · ${esc(l.note)}</small></div></div>`).join("")}</div></section>` : ""}
   <section class="section"><h2>Itinerary</h2>${ctx.readonly ? "" : `<div class="note" style="margin-bottom:12px">Saved on this device${sync.key ? " and synced to your other devices." : ". Turn on sync from the home page to use it on other devices."}</div>`}
   ${!ctx.readonly && trip.mode === "sail" ? `<form class="no-print" data-form="speed" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;font-size:13px;color:var(--muted)"><label for="spd">Cruising speed</label><input id="spd" name="speed" type="number" min="2" max="30" step="0.5" value="${s.speed}" style="width:80px;border:1px solid var(--line);border-radius:10px;padding:6px 8px"> kn <button class="btn small ghost" type="submit">Update</button></form>` : ""}
   <div class="days">${trip.days.map((d) => dayCard(ctx, d)).join("")}</div>${!ctx.readonly && !trip.builtin ? `<p><button class="btn ghost" style="margin-top:14px" data-act="day-add">+ Add a day</button></p>` : ""}</section>`;
@@ -265,7 +273,7 @@ function overview(ctx) {
 
 // ---- Map ----
 function mapView(ctx) {
-  return `<a class="back" href="${ctx.base}" data-link>← Trip overview</a><div class="eyebrow">${esc(ctx.trip.name.toUpperCase())}</div><section class="section"><h2>Map</h2><div class="note" style="margin-bottom:12px">Pick a day, click a stop, or press Play trip to follow the whole route. Routes are approximate and positions are for planning, not navigation.</div><div class="mapbar" id="mapbar"></div><div id="tripmap" role="application" aria-label="Map of the itinerary"></div><div class="mapctl"><button class="btn small" id="mplay" type="button" aria-pressed="false">Play trip</button><input id="mscrub" type="range" min="0" max="1000" value="0" aria-label="Trip progress"><span id="mpos" aria-live="polite"></span><label class="speed">Speed <select id="mspeed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label><button class="btn small ghost" id="mfit" type="button">Show all</button></div><div class="mapinfo" id="mapinfo" aria-live="polite"></div><div class="mapcap" id="mapcap"></div></section>`;
+  return `<a class="back" href="${ctx.base}" data-link>← Trip overview</a><div class="eyebrow">${esc(ctx.trip.name.toUpperCase())}</div><section class="section"><h2>Map</h2><div class="note" style="margin-bottom:12px">Pick a day, click a stop, or press Play trip to follow the whole route. Routes are approximate and positions are for planning, not navigation.</div><div class="mapbar" id="mapbar"></div><div id="tripmap" role="application" aria-label="Map of the itinerary"></div><div class="mapctl"><button class="btn small" id="mplay" type="button" aria-pressed="false">Play trip</button><input id="mscrub" type="range" min="0" max="1000" value="0" aria-label="Trip progress"><span id="mpos" aria-live="polite"></span><label class="speed">Speed <select id="mspeed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label><button class="btn small ghost" id="mfit" type="button">Show all</button>${ctx.trip.legs?.some((l) => l.route) ? `<button class="btn small ghost" id="mflights" type="button" aria-pressed="false">Show flights</button>` : ""}</div><div class="mapinfo" id="mapinfo" aria-live="polite"></div><div class="mapcap" id="mapcap"></div></section>`;
 }
 function mapEnv(ctx) {
   return {
