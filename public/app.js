@@ -163,11 +163,13 @@ function wxHtml(v) {
   return `<span title="${v.live ? "Forecast" : "What that date was like last year"}">${v.live ? "Forecast" : `Last year (${fmtDate(v.day, { month: "short", day: "numeric", year: "numeric" })})`}: ${f(v.hi)}°/${f(v.lo)}°F (${Math.round(v.hi)}°/${Math.round(v.lo)}°C)</span><span>Wind up to ${Math.round(v.wind)} kn</span><span>${rain}</span>`;
 }
 async function fillWeather(trip) {
-  for (const el of document.querySelectorAll("[data-wx]")) {
+  const els = [...document.querySelectorAll("[data-wx]")];
+  const one = async (el) => {
     const n = +el.dataset.wx, g = dayGeo(trip, n), ll = g.pins[0]?.ll ?? g.path[0];
-    if (!ll) { el.remove(); continue; }
-    try { el.innerHTML = wxHtml(await weather(ll, dayDate(trip, n))); } catch { el.remove(); }
-  }
+    if (!ll) { el.remove(); return; }
+    try { const w = await weather(ll, dayDate(trip, n)); if (el.isConnected) el.innerHTML = wxHtml(w); } catch { el.remove(); }
+  };
+  for (let i = 0; i < els.length; i += 4) await Promise.all(els.slice(i, i + 4).map(one)); // a few at a time, not one after another
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

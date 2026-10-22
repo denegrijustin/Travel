@@ -45,7 +45,13 @@ export const syncKey = (phrase) => sha256Hex("italy-trip-sync:" + phrase.trim())
 export const isoDate = (d) => d.toISOString().slice(0, 10);
 export function addDays(iso, n) { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return isoDate(d); }
 export const daysBetween = (a, b) => Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 864e5);
-export function fmtDate(iso, opts = { month: "short", day: "numeric" }) { return new Date(iso + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", ...opts }); }
+const dateFormats = new Map(); // building an Intl formatter is slow, and every card formats several dates
+export function fmtDate(iso, opts = { month: "short", day: "numeric" }) {
+  const key = JSON.stringify(opts);
+  let f = dateFormats.get(key);
+  if (!f) dateFormats.set(key, (f = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...opts })));
+  return f.format(new Date(iso + "T12:00:00Z"));
+}
 export const fmtRange = (start, n) => (n < 2 ? fmtDate(start, { month: "short", day: "numeric", year: "numeric" }) : `${fmtDate(start)} – ${fmtDate(addDays(start, n - 1), { month: "short", day: "numeric", year: "numeric" })}`);
 /** The most recent past occurrence of the month and day of `iso`, as of `today`: what "this day last year" means for a future date. */
 export function lastOccurrence(iso, today) {

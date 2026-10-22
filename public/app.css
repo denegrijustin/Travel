@@ -163,3 +163,13 @@ path.route{transition:opacity .25s,stroke-width .25s}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.dayhero,.dayintro,.daymapwrap,.stop{animation:none}.pin{transition:none}.pin.ping{animation:none}}
 @media print{.daymapbar{display:none}}
+
+/* Touch: 44px tap targets and readable credits on phones */
+@media(max-width:820px),(pointer:coarse){
+  .btn.small,.maplink,.back{min-height:44px;display:inline-flex;align-items:center}
+  .chip{min-height:40px;display:inline-flex;align-items:center;padding:0 12px}
+  .credit{font-size:12px;padding:6px 8px}.badge{font-size:12px}
+  .daymapbar .btn{justify-content:center}
+  .countdown{padding:10px 14px;margin-bottom:14px}.countdown .cdn b{font-size:1.25rem}
+  #daymap{height:min(46vh,380px)}
+}
