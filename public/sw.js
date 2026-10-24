@@ -1,5 +1,5 @@
 // Offline support: the app files and photos are cached after the first visit; map tiles you have looked at are kept too.
-const V = "travel-v9";
+const V = "travel-v10";
 const TILES = "travel-tiles-v1";
 const SHELL = ["/", "/app.css", "/app.js", "/lib.js", "/data.js", "/map.js", "/places.js", "/config.js", "/airlines.js", "/manifest.webmanifest", "/icons/icon.svg", "/icons/icon-192.png"];
 
@@ -30,10 +30,12 @@ self.addEventListener("fetch", (e) => {
   }
   const same = url.origin === location.origin, lib = url.hostname === "cdnjs.cloudflare.com";
   if (same || lib) {
+    const still = same && (url.pathname.startsWith("/img/") || url.pathname.startsWith("/icons/")) || lib; // photos, icons and the map library rarely change: serve from the cache
     e.respondWith(caches.open(V).then(async (c) => {
       const hit = await c.match(req);
-      const net = fetch(req).then((r) => { if (r.ok) c.put(req, r.clone()); return r; }).catch(() => hit);
-      return hit || net;
+      const net = fetch(req).then((r) => { if (r.ok) c.put(req, r.clone()); return r; });
+      if (still) return hit || net.catch(() => new Response("", { status: 504 }));
+      return net.catch(() => hit || new Response("", { status: 504 })); // the app's own files: the live version when online, the saved copy offline
     }));
   }
 });

@@ -1,6 +1,6 @@
 // The trip map: animated zoom, the whole trip drawn as one connected route with direction arrows, a "play the trip" tour with a boat
 // that sails the route and stops at each place, a progress scrubber, a satellite layer, and a card for the place you pick.
-import { AIRLINES } from "./airlines.js";
+import { AIRLINES, planeMarker } from "./airlines.js";
 import { addDays as addDaysIso, modeScale, tourHours, buildTour, pointAt, arcPoints, haversineNm, googleMapsUrl, streetViewUrl, appleMapsUrl, bearing } from "./lib.js";
 
 const DAYCOL = ["#d94f3d", "#e08a1e", "#c9a400", "#3a9d5d", "#1f9bb5", "#3a6fd1", "#7a52c9", "#c0408f"];
@@ -179,7 +179,7 @@ export function initTripMap(env) {
   }
 
   // ---- The boat and the tour ----
-  const iconFor = (m, craft) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? AIRLINES[craft]?.plane ?? PLANE : '<div class="dotpulse"></div>');
+  const iconFor = (m, craft) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? (AIRLINES[craft] ? planeMarker(craft) : PLANE) : '<div class="dotpulse"></div>');
   const modeOf = (v) => v?.mode ?? trip.mode;
   const kindOf = (m, craft) => m + (craft ? ":" + craft : "");
   let curMode = kindOf(modeOf(tour.verts[0]), tour.verts[0].craft);
@@ -204,7 +204,7 @@ export function initTripMap(env) {
     boat.setLatLng(p.ll);
     const icon = boat.getElement()?.firstChild, m = modeOf(p), kind = kindOf(m, p.craft);
     if (icon && kind !== curMode) { curMode = kind; icon.innerHTML = iconFor(m, p.craft); icon.style.transform = ""; }
-    if (icon && m === "air") icon.style.transform = `rotate(${p.heading.toFixed(0)}deg)`; // the plane points the way it flies
+    if (icon && m === "air") { const rot = icon.querySelector(".prot"), a = `rotate(${p.heading.toFixed(0)}deg)`; if (rot) rot.style.transform = a; else icon.style.transform = a; } // the plane points the way it flies; its name tag stays upright
     else if (icon && m !== "walk") icon.style.transform = `scaleX(${p.heading > 180 ? -1 : 1})`; // the boat and train face east or west
     trail.setStyle({ color: typeof p.day === "number" ? dayColor(p.day) : "#8a5a00" });
     trail.setLatLngs([...tour.verts.slice(0, p.seg).map((v) => v.ll), p.ll]);
@@ -348,7 +348,7 @@ export function initDayMap(env) {
     m.on("click", () => { env.onPick?.(p.name); flyToPin(p.name); });
     markers.set(p.name, m);
   });
-  const iconFor = (m, craft) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? AIRLINES[craft]?.plane ?? PLANE : '<div class="dotpulse"></div>');
+  const iconFor = (m, craft) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? (AIRLINES[craft] ? planeMarker(craft) : PLANE) : '<div class="dotpulse"></div>');
   const kindOf = (m, craft) => m + (craft ? ":" + craft : "");
   let curMode = kindOf(tour.verts[0]?.mode ?? mode, tour.verts[0]?.craft);
   const rider = L.marker(tour.verts[0]?.ll ?? all[0], { icon: L.divIcon({ className: "boat", html: `<div class="boaticon">${iconFor(tour.verts[0]?.mode ?? mode, tour.verts[0]?.craft)}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, keyboard: false, zIndexOffset: 1000, opacity: 0 }).addTo(map);
@@ -364,7 +364,7 @@ export function initDayMap(env) {
     rider.setOpacity(1); rider.setLatLng(p.ll);
     const icon = rider.getElement()?.firstChild, m = p.mode ?? mode, kind = kindOf(m, p.craft);
     if (icon && kind !== curMode) { curMode = kind; icon.innerHTML = iconFor(m, p.craft); icon.style.transform = ""; }
-    if (icon && m === "air") icon.style.transform = `rotate(${p.heading.toFixed(0)}deg)`;
+    if (icon && m === "air") { const rot = icon.querySelector(".prot"), a = `rotate(${p.heading.toFixed(0)}deg)`; if (rot) rot.style.transform = a; else icon.style.transform = a; }
     else if (icon && m !== "walk") icon.style.transform = `scaleX(${p.heading > 180 ? -1 : 1})`;
     trail.setLatLngs([...tour.verts.slice(0, p.seg).map((v) => v.ll), p.ll]);
   }
