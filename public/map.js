@@ -1,5 +1,6 @@
 // The trip map: animated zoom, the whole trip drawn as one connected route with direction arrows, a "play the trip" tour with a boat
 // that sails the route and stops at each place, a progress scrubber, a satellite layer, and a card for the place you pick.
+import { AIRLINES } from "./airlines.js";
 import { addDays as addDaysIso, modeScale, tourHours, buildTour, pointAt, arcPoints, haversineNm, googleMapsUrl, streetViewUrl, appleMapsUrl, bearing } from "./lib.js";
 
 const DAYCOL = ["#d94f3d", "#e08a1e", "#c9a400", "#3a9d5d", "#1f9bb5", "#3a6fd1", "#7a52c9", "#c0408f"];
@@ -29,15 +30,16 @@ export function initTripMap(env) {
   const dayData = days.map((d, i) => { const g = env.dayGeo(trip, i + 1); const mode = d.mode ?? trip.mode; return { n: i + 1, path: g.path, pins: g.pins, mode, scale: modeScale(mode) }; });
   // Flights and the opening train ride are legs of their own, tucked in before the first day on or after their date. Flights are drawn as
   // great-circle arcs and the train follows the rail corridor. Every mode is scaled by its real speed (see modeScale in lib.js).
+  // A flight is one segment per hop so each hop can fly in its own airline's livery (`airlines` lists one per hop).
   const legSegs = (trip.legs ?? []).filter((l) => l.tour).map((l) => {
     const ll = l.route ? l.route.map((c) => trip.airports?.[c]?.ll).filter(Boolean) : [];
-    const path = l.route ? ll.slice(1).flatMap((b, i) => arcPoints(ll[i], b).slice(i ? 1 : 0)) : trip.geo?.lines?.[l.line] ?? [];
-    return { n: "leg-" + l.id, leg: l, path, pins: [], mode: l.route ? "air" : "rail", scale: modeScale(l.route ? "air" : "rail") };
-  }).filter((x) => x.path.length > 1);
+    if (!l.route) return [{ n: "leg-" + l.id, leg: l, path: trip.geo?.lines?.[l.line] ?? [], pins: [], mode: "rail", scale: modeScale("rail") }];
+    return ll.slice(1).map((b, i) => ({ n: "leg-" + l.id + (i ? "-" + i : ""), leg: l, path: arcPoints(ll[i], b), pins: [], mode: "air", scale: modeScale("air"), craft: l.airlines?.[i] }));
+  }).map((hops) => hops.filter((x) => x.path.length > 1)).filter((hops) => hops.length);
   const segs = [...dayData];
-  for (const sg of legSegs) {
-    const at = trip.start ? days.findIndex((_, i) => addDaysIso(trip.start, i) >= sg.leg.date) : -1, idx = at < 0 ? -1 : segs.findIndex((x) => x.n === at + 1);
-    segs.splice(idx < 0 ? segs.length : idx, 0, sg);
+  for (const hops of legSegs) {
+    const at = trip.start ? days.findIndex((_, i) => addDaysIso(trip.start, i) >= hops[0].leg.date) : -1, idx = at < 0 ? -1 : segs.findIndex((x) => x.n === at + 1);
+    segs.splice(idx < 0 ? segs.length : idx, 0, ...hops);
   }
   const tour = buildTour(segs);
   const allPts = [...tour.verts.filter((v) => v.mode !== "air").map((v) => v.ll), ...dayData.flatMap((d) => d.pins.map((p) => p.ll)), ...env.savedPlaces.filter((p) => p.ll).map((p) => p.ll)];
@@ -177,16 +179,17 @@ export function initTripMap(env) {
   }
 
   // ---- The boat and the tour ----
-  const iconFor = (m) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? PLANE : '<div class="dotpulse"></div>');
+  const iconFor = (m, craft) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? AIRLINES[craft]?.plane ?? PLANE : '<div class="dotpulse"></div>');
   const modeOf = (v) => v?.mode ?? trip.mode;
-  let curMode = modeOf(tour.verts[0]);
-  const boat = L.marker(tour.verts[0].ll, { icon: L.divIcon({ className: "boat", html: `<div class="boaticon">${iconFor(curMode)}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, keyboard: false, zIndexOffset: 1000, opacity: 0 }).addTo(map);
+  const kindOf = (m, craft) => m + (craft ? ":" + craft : "");
+  let curMode = kindOf(modeOf(tour.verts[0]), tour.verts[0].craft);
+  const boat = L.marker(tour.verts[0].ll, { icon: L.divIcon({ className: "boat", html: `<div class="boaticon">${iconFor(modeOf(tour.verts[0]), tour.verts[0].craft)}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, keyboard: false, zIndexOffset: 1000, opacity: 0 }).addTo(map);
   const trail = L.polyline([], { color: "#17201d", weight: 7, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }).addTo(map);
   const scrub = document.getElementById("mscrub"), pos = document.getElementById("mpos"), playBtn = document.getElementById("mplay"), speedSel = document.getElementById("mspeed");
   let camAir = false, dist = 0, playing = false, raf = 0, lastT = 0, pauseUntil = 0, nextStop = 0, follow = true;
   const SECONDS = 50; // the whole trip at 1x, not counting the stops
   const VERB = { sail: "sailing", rail: "by train", air: "flying", walk: "on foot" };
-  const label = () => { const p = pointAt(tour, dist); return p ? `${typeof p.day === "number" ? `Day ${p.day}` : segs.find((x) => x.n === p.day)?.leg.title} · ${VERB[modeOf(p)] ?? ""}` : ""; };
+  const label = () => { const p = pointAt(tour, dist); return p ? `${typeof p.day === "number" ? `Day ${p.day}` : segs.find((x) => x.n === p.day)?.leg.title} · ${p.craft && AIRLINES[p.craft] ? "flying " + AIRLINES[p.craft].name : VERB[modeOf(p)] ?? ""}` : ""; };
   function setDist(d, { move = true } = {}) {
     dist = Math.max(0, Math.min(d, tour.total));
     nextStop = tour.stops.findIndex((s) => s.at > dist + 1e-9); if (nextStop < 0) nextStop = tour.stops.length;
@@ -199,8 +202,8 @@ export function initTripMap(env) {
     if (!p) return;
     boat.setOpacity(1);
     boat.setLatLng(p.ll);
-    const icon = boat.getElement()?.firstChild, m = modeOf(p);
-    if (icon && m !== curMode) { curMode = m; icon.innerHTML = iconFor(m); icon.style.transform = ""; }
+    const icon = boat.getElement()?.firstChild, m = modeOf(p), kind = kindOf(m, p.craft);
+    if (icon && kind !== curMode) { curMode = kind; icon.innerHTML = iconFor(m, p.craft); icon.style.transform = ""; }
     if (icon && m === "air") icon.style.transform = `rotate(${p.heading.toFixed(0)}deg)`; // the plane points the way it flies
     else if (icon && m !== "walk") icon.style.transform = `scaleX(${p.heading > 180 ? -1 : 1})`; // the boat and train face east or west
     trail.setStyle({ color: typeof p.day === "number" ? dayColor(p.day) : "#8a5a00" });
@@ -317,7 +320,7 @@ export function initDayMap(env) {
   if (!el) return;
   if (typeof L === "undefined") { el.innerHTML = '<div class="empty" style="padding:30px">The map library could not load. Check your connection and reload.</div>'; return; }
   const { n, pins, esc } = env, mode = env.mode ?? "walk", col = dayColor(n), R = reduced();
-  const segs = [...env.legs.map((l, i) => ({ n: "leg" + i, path: l.path, pins: [], mode: l.mode, scale: modeScale(l.mode), title: l.title })), { n, path: env.path, pins, mode, scale: modeScale(mode) }];
+  const segs = [...env.legs.map((l, i) => ({ n: "leg" + i, path: l.path, pins: [], mode: l.mode, scale: modeScale(l.mode), title: l.title, craft: l.craft })), { n, path: env.path, pins, mode, scale: modeScale(mode) }];
   const tour = buildTour(segs);
   const all = [...tour.verts.map((v) => v.ll), ...pins.map((p) => p.ll)];
   if (!all.length) { el.innerHTML = '<div class="empty" style="padding:30px">No places on the map for this day.</div>'; return; }
@@ -345,9 +348,10 @@ export function initDayMap(env) {
     m.on("click", () => { env.onPick?.(p.name); flyToPin(p.name); });
     markers.set(p.name, m);
   });
-  const iconFor = (m) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? PLANE : '<div class="dotpulse"></div>');
-  let curMode = tour.verts[0]?.mode ?? mode;
-  const rider = L.marker(tour.verts[0]?.ll ?? all[0], { icon: L.divIcon({ className: "boat", html: `<div class="boaticon">${iconFor(curMode)}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, keyboard: false, zIndexOffset: 1000, opacity: 0 }).addTo(map);
+  const iconFor = (m, craft) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? AIRLINES[craft]?.plane ?? PLANE : '<div class="dotpulse"></div>');
+  const kindOf = (m, craft) => m + (craft ? ":" + craft : "");
+  let curMode = kindOf(tour.verts[0]?.mode ?? mode, tour.verts[0]?.craft);
+  const rider = L.marker(tour.verts[0]?.ll ?? all[0], { icon: L.divIcon({ className: "boat", html: `<div class="boaticon">${iconFor(tour.verts[0]?.mode ?? mode, tour.verts[0]?.craft)}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, keyboard: false, zIndexOffset: 1000, opacity: 0 }).addTo(map);
   const pop = (name) => markers.get(name)?.getElement()?.firstChild?.classList.remove("hid");
   const showPins = () => pins.forEach((p) => pop(p.name));
 
@@ -358,8 +362,8 @@ export function initDayMap(env) {
     const p = pointAt(tour, dist);
     if (!p) return;
     rider.setOpacity(1); rider.setLatLng(p.ll);
-    const icon = rider.getElement()?.firstChild, m = p.mode ?? mode;
-    if (icon && m !== curMode) { curMode = m; icon.innerHTML = iconFor(m); icon.style.transform = ""; }
+    const icon = rider.getElement()?.firstChild, m = p.mode ?? mode, kind = kindOf(m, p.craft);
+    if (icon && kind !== curMode) { curMode = kind; icon.innerHTML = iconFor(m, p.craft); icon.style.transform = ""; }
     if (icon && m === "air") icon.style.transform = `rotate(${p.heading.toFixed(0)}deg)`;
     else if (icon && m !== "walk") icon.style.transform = `scaleX(${p.heading > 180 ? -1 : 1})`;
     trail.setLatLngs([...tour.verts.slice(0, p.seg).map((v) => v.ll), p.ll]);

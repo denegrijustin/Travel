@@ -159,10 +159,10 @@ export function buildTour(days) {
     const firstIdx = verts.length;
     let link = false, rest = pts;
     if (prevEnd) {
-      if (haversineNm(prevEnd, pts[0]) > 0.2) { verts.push({ ll: pts[0], day: d.n, kind: "link", mode: d.mode, scale: d.scale }); link = true; }
+      if (haversineNm(prevEnd, pts[0]) > 0.2) { verts.push({ ll: pts[0], day: d.n, kind: "link", mode: d.mode, scale: d.scale, craft: d.craft }); link = true; }
       rest = pts.slice(1);
-    } else { verts.push({ ll: pts[0], day: d.n, kind: "day", mode: d.mode, scale: d.scale }); rest = pts.slice(1); }
-    for (const ll of rest) verts.push({ ll, day: d.n, kind: "day", mode: d.mode, scale: d.scale });
+    } else { verts.push({ ll: pts[0], day: d.n, kind: "day", mode: d.mode, scale: d.scale, craft: d.craft }); rest = pts.slice(1); }
+    for (const ll of rest) verts.push({ ll, day: d.n, kind: "day", mode: d.mode, scale: d.scale, craft: d.craft });
     dayAt[d.n] = { firstIdx: prevEnd && !link ? Math.max(0, firstIdx - 1) : link ? firstIdx - 1 : firstIdx, lastIdx: verts.length - 1 };
     if (dayAt[d.n].firstIdx < 0) dayAt[d.n].firstIdx = 0;
     prevEnd = pts.at(-1);
@@ -193,7 +193,7 @@ export function pointAt(tour, dist) {
   if (verts.length === 1) return { ll: verts[0].ll, seg: 0, heading: 0, day: verts[0].day, kind: verts[0].kind };
   while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid] < d) lo = mid + 1; else hi = mid; }
   const a = verts[lo - 1], b = verts[lo], len = cum[lo] - cum[lo - 1], t = len > 0 ? (d - cum[lo - 1]) / len : 1;
-  return { ll: [a.ll[0] + (b.ll[0] - a.ll[0]) * t, a.ll[1] + (b.ll[1] - a.ll[1]) * t], seg: lo, heading: bearing(a.ll, b.ll), day: b.day, kind: b.kind, mode: b.mode };
+  return { ll: [a.ll[0] + (b.ll[0] - a.ll[0]) * t, a.ll[1] + (b.ll[1] - a.ll[1]) * t], seg: lo, heading: bearing(a.ll, b.ll), day: b.day, kind: b.kind, mode: b.mode, craft: b.craft };
 }
 
 /** Points along the great circle from `a` to `b` (both [lat, lon]), `n` segments, for drawing a flight. */
