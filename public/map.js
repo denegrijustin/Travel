@@ -1,6 +1,6 @@
 // The trip map: animated zoom, the whole trip drawn as one connected route with direction arrows, a "play the trip" tour with a boat
 // that sails the route and stops at each place, a progress scrubber, a satellite layer, and a card for the place you pick.
-import { addDays as addDaysIso, buildTour, pointAt, arcPoints, haversineNm, googleMapsUrl, appleMapsUrl, bearing } from "./lib.js";
+import { addDays as addDaysIso, modeScale, tourHours, buildTour, pointAt, arcPoints, haversineNm, googleMapsUrl, streetViewUrl, appleMapsUrl, bearing } from "./lib.js";
 
 const DAYCOL = ["#d94f3d", "#e08a1e", "#c9a400", "#3a9d5d", "#1f9bb5", "#3a6fd1", "#7a52c9", "#c0408f"];
 export const dayColor = (n) => DAYCOL[(n - 1) % DAYCOL.length];
@@ -26,13 +26,13 @@ export function initTripMap(env) {
   const el = document.getElementById("tripmap");
   if (!el) return;
   if (typeof L === "undefined") { el.innerHTML = '<div class="empty" style="padding:30px">The map library could not load. Check your connection and reload.</div>'; return; }
-  const dayData = days.map((d, i) => { const g = env.dayGeo(trip, i + 1); return { n: i + 1, path: g.path, pins: g.pins, mode: d.mode ?? trip.mode }; });
+  const dayData = days.map((d, i) => { const g = env.dayGeo(trip, i + 1); const mode = d.mode ?? trip.mode; return { n: i + 1, path: g.path, pins: g.pins, mode, scale: modeScale(mode) }; });
   // Flights and the opening train ride are legs of their own, tucked in before the first day on or after their date. Flights are drawn as
-  // great-circle arcs and take far less tour time than their length; the train follows the rail corridor.
+  // great-circle arcs and the train follows the rail corridor. Every mode is scaled by its real speed (see modeScale in lib.js).
   const legSegs = (trip.legs ?? []).filter((l) => l.tour).map((l) => {
     const ll = l.route ? l.route.map((c) => trip.airports?.[c]?.ll).filter(Boolean) : [];
     const path = l.route ? ll.slice(1).flatMap((b, i) => arcPoints(ll[i], b).slice(i ? 1 : 0)) : trip.geo?.lines?.[l.line] ?? [];
-    return { n: "leg-" + l.id, leg: l, path, pins: [], mode: l.route ? "air" : "rail", scale: l.route ? 0.04 : 1 };
+    return { n: "leg-" + l.id, leg: l, path, pins: [], mode: l.route ? "air" : "rail", scale: modeScale(l.route ? "air" : "rail") };
   }).filter((x) => x.path.length > 1);
   const segs = [...dayData];
   for (const sg of legSegs) {
@@ -135,7 +135,7 @@ export function initTripMap(env) {
     const daysHere = days.filter((d, i) => dayData[i].pins.some((p) => p.name === name)).map((d) => d.n);
     const render = (wiki) => {
       if (token !== infoToken) return;
-      info.innerHTML = `<div class="pinfo">${wiki?.thumb ? `<img src="${attr(wiki.thumb)}" alt="" loading="lazy">` : ""}<div class="pbody"><div class="eyebrow">${extra.saved ? "SAVED PLACE" : daysHere.length ? `DAY${daysHere.length > 1 ? "S" : ""} ${daysHere.join(", ")}` : "PLACE"}</div><h3>${esc(name)}</h3><p>${esc(curated?.tagline || (wiki?.extract ? wiki.extract.split(". ")[0] + "." : extra.saved?.note || ""))}</p><div class="pacts">${extra.saved ? "" : `<a class="btn small" href="${attr(href)}" data-link>Read the guide</a>`}<a class="btn small ghost" href="${attr(googleMapsUrl(ll, name))}" target="_blank" rel="noopener">Google Maps</a><a class="btn small ghost" href="${attr(appleMapsUrl(ll, name))}" target="_blank" rel="noopener">Apple Maps</a></div></div></div>`;
+      info.innerHTML = `<div class="pinfo">${wiki?.thumb ? `<img src="${attr(wiki.thumb)}" alt="" loading="lazy">` : ""}<div class="pbody"><div class="eyebrow">${extra.saved ? "SAVED PLACE" : daysHere.length ? `DAY${daysHere.length > 1 ? "S" : ""} ${daysHere.join(", ")}` : "PLACE"}</div><h3>${esc(name)}</h3><p>${esc(curated?.tagline || (wiki?.extract ? wiki.extract.split(". ")[0] + "." : extra.saved?.note || ""))}</p><div class="pacts">${extra.saved ? "" : `<a class="btn small" href="${attr(href)}" data-link>Read the guide</a>`}<a class="btn small ghost" href="${attr(googleMapsUrl(ll, name))}" target="_blank" rel="noopener">Google Maps</a><a class="btn small ghost" href="${attr(streetViewUrl(ll))}" target="_blank" rel="noopener">Street view</a><a class="btn small ghost" href="${attr(appleMapsUrl(ll, name))}" target="_blank" rel="noopener">Apple Maps</a></div></div></div>`;
     };
     render(null);
     if (!extra.saved) env.wikiFor(name).then(render).catch(() => {});
@@ -317,7 +317,7 @@ export function initDayMap(env) {
   if (!el) return;
   if (typeof L === "undefined") { el.innerHTML = '<div class="empty" style="padding:30px">The map library could not load. Check your connection and reload.</div>'; return; }
   const { n, pins, esc } = env, mode = env.mode ?? "walk", col = dayColor(n), R = reduced();
-  const segs = [...env.legs.map((l, i) => ({ n: "leg" + i, path: l.path, pins: [], mode: l.mode, scale: l.mode === "air" ? 0.04 : 1, title: l.title })), { n, path: env.path, pins, mode, scale: 1 }];
+  const segs = [...env.legs.map((l, i) => ({ n: "leg" + i, path: l.path, pins: [], mode: l.mode, scale: modeScale(l.mode), title: l.title })), { n, path: env.path, pins, mode, scale: modeScale(mode) }];
   const tour = buildTour(segs);
   const all = [...tour.verts.map((v) => v.ll), ...pins.map((p) => p.ll)];
   if (!all.length) { el.innerHTML = '<div class="empty" style="padding:30px">No places on the map for this day.</div>'; return; }
@@ -352,7 +352,8 @@ export function initDayMap(env) {
   const showPins = () => pins.forEach((p) => pop(p.name));
 
   let raf = 0, token = 0;
-  const DURATION = 7000;
+  // The replay lasts in proportion to the real travel time (a short train hop is quick, a sailing day or a flight takes longer).
+  const DURATION = Math.min(14000, Math.max(2200, tourHours(tour.total) * 1500));
   function place(dist) {
     const p = pointAt(tour, dist);
     if (!p) return;

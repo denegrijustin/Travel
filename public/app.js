@@ -1,4 +1,5 @@
-import { arcPoints, countdown, SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
+import { arcPoints, countdown, SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, streetViewUrl, streetViewEmbedUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
+import { GOOGLE_MAPS_KEY } from "./config.js";
 import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS, ITALY_EXTRA } from "./data.js";
 import { PLACES, slugify } from "./places.js";
 import { initTripMap, initDayMap, destroyMap, flyToPin, replayDay, fitDay, dayColor } from "./map.js";
@@ -318,7 +319,7 @@ function dayView(ctx) {
       ${hist ? `<div class="sblk"><b>History</b><p>${esc(hist)}</p></div>` : ""}
       ${loc.length ? `<div class="sblk locals"><b>Locals know</b><ul>${loc.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
       ${c?.see?.[0] ? `<div class="sblk"><b>Don't miss</b><p>${esc(c.see[0])}</p></div>` : ""}
-      <div class="sacts">${ll ? `<button type="button" class="btn small ghost" data-fly="${attr(name)}">Zoom to it on the map</button>` : ""}<a class="btn small ghost" href="${attr(ctx.base)}/guide/${slugify(name)}" data-link>Full guide →</a></div></div></li>`;
+      <div class="sacts">${ll ? `<button type="button" class="btn small ghost" data-fly="${attr(name)}">Zoom to it on the map</button>${svButton(ll, name)}` : ""}<a class="btn small ghost" href="${attr(ctx.base)}/guide/${slugify(name)}" data-link>Full guide →</a></div>${ll ? svPanel(ll, name) : ""}</div></li>`;
   }).join("");
   const prev = trip.days[n - 2], next = trip.days[n];
   return `<a class="back" href="${attr(ctx.base)}#day-${n}" data-link>← Itinerary</a>
@@ -416,6 +417,14 @@ function tripStops(trip) {
   return [...by.values()];
 }
 const stopLl = (trip, name) => (trip.geo?.places ?? {})[name] ?? null;
+// Street view: inside the page when a Google Maps key is set (config.js), otherwise a link that opens Google Maps at street level.
+const svButton = (ll, name) => (streetViewEmbedUrl(ll, GOOGLE_MAPS_KEY)
+  ? `<button type="button" class="btn small ghost" data-sv="${attr(name)}" aria-expanded="false">Street view</button>`
+  : `<a class="btn small ghost" href="${attr(streetViewUrl(ll))}" target="_blank" rel="noopener">Street view ↗</a>`);
+const svPanel = (ll, name) => {
+  const src = streetViewEmbedUrl(ll, GOOGLE_MAPS_KEY);
+  return src ? `<div class="svpanel" data-svpanel="${attr(name)}" data-src="${attr(src)}" hidden><div class="svframe"></div><p class="note">Street view of ${esc(name)}. If it says there is no imagery, the spot is not on a road (a cove or the open sea): <a href="${attr(streetViewUrl(ll))}" target="_blank" rel="noopener">try Google Maps</a>.</p></div>` : "";
+};
 
 function guideView(ctx) {
   const { trip } = ctx, stops = tripStops(trip);
@@ -429,7 +438,7 @@ function guideView(ctx) {
   const notes = (ctx.get("placenotes", {}) || {})[stop.slug] ?? "";
   return `<a class="back" href="${ctx.base}/guide" data-link>← All place guides</a>
   <div class="eyebrow">${esc(c?.area ?? "PLACE GUIDE")}</div><h1 class="gh">${esc(stop.name)}</h1>${c ? `<p class="gtag">${esc(c.tagline)}</p>` : ""}
-  <div class="gactions">${ll ? `<a class="btn" href="${attr(ctx.base)}/map?place=${stop.slug}" data-link>Show on the map</a><a class="btn ghost" href="${attr(googleMapsUrl(ll, stop.name))}" target="_blank" rel="noopener">Google Maps</a><a class="btn ghost" href="${attr(appleMapsUrl(ll, stop.name))}" target="_blank" rel="noopener">Apple Maps</a>` : ""}</div>
+  <div class="gactions">${ll ? `<a class="btn" href="${attr(ctx.base)}/map?place=${stop.slug}" data-link>Show on the map</a><a class="btn ghost" href="${attr(googleMapsUrl(ll, stop.name))}" target="_blank" rel="noopener">Google Maps</a><a class="btn ghost" href="${attr(appleMapsUrl(ll, stop.name))}" target="_blank" rel="noopener">Apple Maps</a>${svButton(ll, stop.name).replace("btn small ghost", "btn ghost")}` : ""}</div>${ll ? svPanel(ll, stop.name) : ""}
   <div class="gphoto" id="gphoto" hidden></div>
   <section class="panel"><h3>About</h3><div id="gabout" class="gabout"><span class="note">Loading from Wikipedia…</span></div></section>
   ${c ? `<section class="panel"><h3>History</h3>${c.history.map((t) => `<p>${esc(t)}</p>`).join("")}</section><section class="panel"><h3>What to see and do</h3>${list(c.see)}</section><section class="panel"><h3>Good to know</h3>${list(c.tips)}<p class="note">Opening times, prices, rules and sea conditions change. Check them close to the day.</p></section>${c.fact ? `<section class="panel gfact"><h3>Did you know</h3><p>${esc(c.fact)}</p></section>` : ""}` : `<section class="panel"><p class="note">There is no written guide for this place yet. The summary above comes from Wikipedia, and your own notes go below.</p></section>`}
@@ -606,6 +615,17 @@ const forms = {
 document.addEventListener("click", (e) => {
   const fly = e.target.closest("[data-fly]");
   if (fly) { flyToPin(fly.dataset.fly); document.getElementById("daymap")?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); return; }
+  const sv = e.target.closest("[data-sv]");
+  if (sv) {
+    const panel = [...document.querySelectorAll("[data-svpanel]")].find((x) => x.dataset.svpanel === sv.dataset.sv);
+    if (panel) {
+      const open = panel.hidden;
+      panel.hidden = !open; sv.setAttribute("aria-expanded", String(open)); sv.textContent = open ? "Hide street view" : "Street view";
+      const box = panel.querySelector(".svframe");
+      if (open && !box.firstChild) { const f = document.createElement("iframe"); f.src = panel.dataset.src; f.title = `Street view of ${sv.dataset.sv}`; f.loading = "lazy"; f.allowFullscreen = true; f.referrerPolicy = "strict-origin-when-cross-origin"; box.append(f); }
+    }
+    return;
+  }
   if (e.target.closest("[data-replay]")) { replayDay(); return; }
   if (e.target.closest("[data-fit]")) { fitDay(); return; }
   const a = e.target.closest("a[data-link]");

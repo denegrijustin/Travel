@@ -129,3 +129,28 @@ test("countdown counts down to the start of a date", () => {
   assert.equal(countdown("2027-06-17", new Date(2027, 5, 17, 9)).state, "now");
   assert.equal(countdown("2027-06-17", new Date(2027, 5, 18, 0, 1)).state, "past");
 });
+
+import { modeScale, tourHours, MODE_KN, streetViewUrl, streetViewEmbedUrl } from "../public/lib.js";
+
+test("tour time is proportional to real travel time: boat < train < plane in speed", () => {
+  const nm = 100, hours = (mode) => tourHours(nm * modeScale(mode));
+  assert.ok(Math.abs(hours("sail") - nm / MODE_KN.sail) < 1e-9);
+  assert.ok(Math.abs(hours("rail") - nm / MODE_KN.rail) < 1e-9);
+  assert.ok(Math.abs(hours("air") - nm / MODE_KN.air) < 1e-9);
+  assert.ok(hours("walk") > hours("sail") && hours("sail") > hours("rail") && hours("rail") > hours("air"));
+  assert.ok(MODE_KN.rail < MODE_KN.air / 4, "a train is nowhere near as fast as a plane");
+  assert.equal(modeScale("unknown"), 1);
+});
+
+test("a day's scale stretches the tour distance in buildTour", () => {
+  const A = [40, 14], B = [40.5, 14], C = [41, 14];
+  const sail = buildTour([{ n: 1, path: [A, C], pins: [], mode: "sail", scale: modeScale("sail") }]).total;
+  const rail = buildTour([{ n: 1, path: [A, C], pins: [], mode: "rail", scale: modeScale("rail") }]).total;
+  assert.ok(Math.abs(sail / rail - MODE_KN.rail / MODE_KN.sail) < 1e-6);
+});
+
+test("street view links", () => {
+  assert.equal(streetViewUrl([40.6287, 14.4855]), "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.6287%2C14.4855");
+  assert.equal(streetViewEmbedUrl([1, 2], ""), "");
+  assert.match(streetViewEmbedUrl([1, 2], "K&Y"), /embed\/v1\/streetview\?key=K%26Y&location=1%2C2/);
+});

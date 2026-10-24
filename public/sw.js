@@ -1,7 +1,7 @@
 // Offline support: the app files and photos are cached after the first visit; map tiles you have looked at are kept too.
-const V = "travel-v7";
+const V = "travel-v8";
 const TILES = "travel-tiles-v1";
-const SHELL = ["/", "/app.css", "/app.js", "/lib.js", "/data.js", "/map.js", "/places.js", "/manifest.webmanifest", "/icons/icon.svg", "/icons/icon-192.png"];
+const SHELL = ["/", "/app.css", "/app.js", "/lib.js", "/data.js", "/map.js", "/places.js", "/config.js", "/manifest.webmanifest", "/icons/icon.svg", "/icons/icon-192.png"];
 
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => {
