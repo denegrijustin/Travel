@@ -187,7 +187,7 @@ export function initTripMap(env) {
   const trail = L.polyline([], { color: "#17201d", weight: 7, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }).addTo(map);
   const scrub = document.getElementById("mscrub"), pos = document.getElementById("mpos"), playBtn = document.getElementById("mplay"), speedSel = document.getElementById("mspeed");
   let camAir = false, dist = 0, playing = false, raf = 0, lastT = 0, pauseUntil = 0, nextStop = 0, follow = true;
-  const SECONDS = 50; // the whole trip at 1x, not counting the stops
+  const UNITS_PER_S = 6.2, SECONDS = Math.min(90, Math.max(15, tour.total / UNITS_PER_S)); // a steady pace along the route (the boat, as before) so longer trips take longer; at 1x, not counting the stops
   const VERB = { sail: "sailing", rail: "by train", air: "flying", walk: "on foot" };
   const label = () => { const p = pointAt(tour, dist); return p ? `${typeof p.day === "number" ? `Day ${p.day}` : segs.find((x) => x.n === p.day)?.leg.title} · ${p.craft && AIRLINES[p.craft] ? "flying " + AIRLINES[p.craft].name : VERB[modeOf(p)] ?? ""}` : ""; };
   function setDist(d, { move = true } = {}) {
@@ -306,7 +306,7 @@ export function initTripMap(env) {
     else info.innerHTML = '<div class="pinfo"><div class="pbody"><h3>Explore the route</h3><p>Pick a day, click a stop for its guide, or press Play trip to sail the whole route.</p></div></div>';
   }
   setTimeout(() => map.invalidateSize(), 50);
-  el._tripMap = map; el._boat = boat; // handles for tests and debugging
+  el._tripMap = map; el._boat = boat; el._tour = tour; // handles for tests and debugging
   current = { map, stop: () => { playing = false; cancelAnimationFrame(raf); clearTimeout(raf); } };
 }
 
