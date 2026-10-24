@@ -19,7 +19,7 @@ export const ITALY_EXTRA = {
   days: [
     ["Jun 26", "Salerno → Rome by train", ["Salerno", "Rome"], "Disembark in Salerno and take the train to Rome, about two hours on a high-speed service. Check in, then spend the afternoon and evening on foot around the historic centre.", "rail"],
     ["Jun 27", "A full day in Rome", ["Colosseum", "Pantheon", "Trevi Fountain", "Vatican City"], "One day for the highlights: the Colosseum and Forum in the morning, the Pantheon and Trevi Fountain after lunch, and the Vatican if there is time and energy left.", "walk"],
-    ["Jun 28", "Fly home", [], "Early train to Fiumicino airport, then Rome to Chicago to Kansas City. Allow plenty of time for the international departure and the connection.", "air"],
+    ["Jun 28", "Fly home", [], "Head to Fiumicino airport (Terminal 3) for the 11:05 AM flight to Philadelphia, then connect to Kansas City, landing at 8:03 PM. Allow plenty of time for the international departure and for customs in Philadelphia.", "air"],
   ],
   places: {
     Rome: [41.9028, 12.4964], Colosseum: [41.8902, 12.4922], Pantheon: [41.8986, 12.4769], "Trevi Fountain": [41.9009, 12.4833], "Vatican City": [41.9022, 12.4539],
@@ -37,11 +37,11 @@ export const ITALY_EXTRA = {
     NS: [[40.8359, 14.2488], [40.8528, 14.2724], [40.7889, 14.3672], [40.7405, 14.4533], [40.7456, 14.4977], [40.7457, 14.6458], [40.7006, 14.7053], [40.6824, 14.7681]],
     SR: [[40.6824, 14.7681], [40.7006, 14.7053], [40.7457, 14.6458], [40.7456, 14.4977], [40.7405, 14.4533], [40.7889, 14.3672], [40.8528, 14.2724], [41.0725, 14.3338], [41.1056, 14.2078], [41.4856, 13.8317], [41.6283, 13.3419], [41.7297, 13.0027], [41.9028, 12.4964]],
   },
-  airports: { MCI: { name: "Kansas City (MCI)", ll: [39.2976, -94.7139] }, YYZ: { name: "Toronto Pearson (YYZ)", ll: [43.6777, -79.6248] }, NAP: { name: "Naples (NAP)", ll: [40.886, 14.2908] }, FCO: { name: "Rome Fiumicino (FCO)", ll: [41.8003, 12.2389] }, ORD: { name: "Chicago O'Hare (ORD)", ll: [41.9742, -87.9073] } },
+  airports: { MCI: { name: "Kansas City (MCI)", ll: [39.2976, -94.7139] }, YYZ: { name: "Toronto Pearson (YYZ)", ll: [43.6777, -79.6248] }, NAP: { name: "Naples (NAP)", ll: [40.886, 14.2908] }, FCO: { name: "Rome Fiumicino (FCO)", ll: [41.8003, 12.2389] }, PHL: { name: "Philadelphia (PHL)", ll: [39.8744, -75.2424] } },
   legs: [
     { id: "out", day: 1, tour: true, kind: "Flight", date: "2027-06-17", title: "Kansas City → Toronto → Naples", route: ["MCI", "YYZ", "NAP"], note: "An overnight crossing: you land in Naples on Day 1 (Jun 18). Check the Toronto connection time and that bags are checked through to Naples." },
     { id: "train-out", day: 2, tour: true, line: "NS", kind: "Train", date: "2027-06-19", title: "Naples → Salerno", note: "From Napoli Centrale, high-speed and regional trains take roughly 35 to 60 minutes. A short taxi from Salerno station reaches Marina d'Arechi." },
     { id: "train-rome", day: 9, kind: "Train", date: "2027-06-26", title: "Salerno → Rome", note: "High-speed trains to Roma Termini take about two hours. Book a seat in advance in summer." },
-    { id: "home", day: 11, tour: true, kind: "Flight", date: "2027-06-28", title: "Rome → Chicago → Kansas City", route: ["FCO", "ORD", "MCI"], note: "From Roma Termini, the Leonardo Express to Fiumicino takes about 30 minutes. Allow about three hours before an international departure." },
+    { id: "home", day: 11, tour: true, kind: "Flight", date: "2027-06-28", title: "Rome → Philadelphia → Kansas City", route: ["FCO", "PHL", "MCI"], note: "Mon Jun 28. Iberia IB4659 (operated by American), Rome FCO Terminal 3 11:05 AM → Philadelphia 2:45 PM, 9 h 40 min, Boeing 787-9, Premium Economy. Then American AA2903, Philadelphia 5:51 PM → Kansas City 8:03 PM, 3 h 12 min. From Roma Termini, the Leonardo Express to Fiumicino takes about 30 minutes; allow about three hours before an international departure." },
   ],
 };
