@@ -89,7 +89,7 @@ export function initTripMap(env) {
 
   // The flights and the opening train ride: amber dashed arcs for flights, a rail-style line for the train.
   const legLines = [];
-  for (const sg of legSegs) {
+  for (const sg of legSegs.flat()) {
     const air = sg.mode === "air", pts = sg.path;
     if (air) legLines.push(L.polyline(pts, { color: "#8a5a00", weight: 3, opacity: 0.9, dashArray: "8 8", lineCap: "round" }).bindTooltip(esc(sg.leg.title), { sticky: true }).addTo(map));
     else {
