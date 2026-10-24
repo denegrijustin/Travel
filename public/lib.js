@@ -112,6 +112,10 @@ export function buildIcs({ id, name, days, reservations = [], stamp = new Date()
 /** Only http(s) links are ever rendered as links. */
 export const safeUrl = (u) => { try { const x = new URL(String(u).trim(), "https://x.invalid"); return /^https?:$/.test(x.protocol) && x.hostname !== "x.invalid" ? x.href : ""; } catch { return ""; } };
 export const googleMapsUrl = (ll, name) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${ll[0]},${ll[1]}`)}`;
+/** Street view of a point: opens Google Maps in its street-level view (no key needed). */
+export const streetViewUrl = (ll) => `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${ll[0]},${ll[1]}`)}`;
+/** The embeddable street view (Google Maps Embed API, needs a key). Empty when there is no key. */
+export const streetViewEmbedUrl = (ll, key) => (key ? `https://www.google.com/maps/embed/v1/streetview?key=${encodeURIComponent(key)}&location=${encodeURIComponent(`${ll[0]},${ll[1]}`)}&fov=90` : "");
 export const appleMapsUrl = (ll, name) => `https://maps.apple.com/?ll=${ll[0]},${ll[1]}&q=${encodeURIComponent(name)}`;
 
 /** Moves legacy string lists to records. */
@@ -130,8 +134,19 @@ export const sameLl = (a, b) => !!a && !!b && Math.abs(a[0] - b[0]) < 1e-6 && Ma
 export const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
 /**
+ * Typical average speeds, in knots, used to animate the tour in proportion to real travel time. The tour distance is measured in "sail
+ * nautical miles", so a leg's distance is scaled by BASE_KN / the mode's speed: a train covers the same ground in a tenth of the tour time
+ * a boat takes, a plane in about a sixtieth. Trains are an average including stops (about 80 mph); planes are cruise plus taxi and climb.
+ */
+export const BASE_KN = 7;
+export const MODE_KN = { walk: 2.6, sail: BASE_KN, rail: 70, air: 450 };
+export const modeScale = (mode) => BASE_KN / (MODE_KN[mode] ?? BASE_KN);
+/** Real travel time, in hours, of a tour or leg length measured in sail nautical miles. */
+export const tourHours = (units) => units / BASE_KN;
+
+/**
  * Joins each day's path into one continuous path, in order. Where a day starts somewhere other than where the last one ended, a "link"
- * leg joins them. `days` = [{ n, path: [[lat,lon],...], pins: [{ name, ll }] }]. Returns the vertices, the distance (nautical miles, times a day's optional `scale`, so a long flight can take less tour time) along
+ * leg joins them. `days` = [{ n, path: [[lat,lon],...], pins: [{ name, ll }] }]. Returns the vertices, the distance (nautical miles, times a day's optional `scale`, scaled by mode so each vehicle travels at its real relative speed) along
  * the path at each vertex, the total, where each stop falls, and where each day starts and ends. A pin that is not on its day's path is a
  * side trip ("spur") and is placed at the end of that day.
  */
