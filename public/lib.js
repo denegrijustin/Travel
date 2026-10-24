@@ -136,10 +136,10 @@ export const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
 /**
  * How fast each kind of travel runs in the tour animation, in knots. The tour distance is measured in "sail nautical miles", so a leg's
  * distance is scaled by BASE_KN / the mode's speed. The boat (and walking) is real; trains and planes are slowed from real life
- * (about 70 and 450 kn) so a train still reads as a few times quicker than a boat and a flight crosses the screen in a few seconds.
+ * (about 70 and 450 kn) so a train still reads as about twice as quick as a boat and a flight crosses the screen in a few seconds.
  */
 export const BASE_KN = 7;
-export const MODE_KN = { walk: 2.6, sail: BASE_KN, rail: 28, air: 900 };
+export const MODE_KN = { walk: 2.6, sail: BASE_KN, rail: 14, air: 900 };
 export const modeScale = (mode) => BASE_KN / (MODE_KN[mode] ?? BASE_KN);
 /** Real travel time, in hours, of a tour or leg length measured in sail nautical miles. */
 export const tourHours = (units) => units / BASE_KN;
