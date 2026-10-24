@@ -154,3 +154,10 @@ test("street view links", () => {
   assert.equal(streetViewEmbedUrl([1, 2], ""), "");
   assert.match(streetViewEmbedUrl([1, 2], "K&Y"), /embed\/v1\/streetview\?key=K%26Y&location=1%2C2/);
 });
+
+test("each hop of a flight keeps its airline through the tour", () => {
+  const A = [41.8, 12.2], B = [39.9, -75.2], C = [39.3, -94.7];
+  const t = buildTour([{ n: "a", path: [A, B], pins: [], mode: "air", craft: "iberia" }, { n: "b", path: [B, C], pins: [], mode: "air", craft: "american" }]);
+  assert.equal(pointAt(t, t.total * 0.25).craft, "iberia");
+  assert.equal(pointAt(t, t.total * 0.99).craft, "american");
+});

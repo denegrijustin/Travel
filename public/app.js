@@ -1,4 +1,5 @@
 import { arcPoints, countdown, SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, streetViewUrl, streetViewEmbedUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
+import { AIRLINES } from "./airlines.js";
 import { GOOGLE_MAPS_KEY } from "./config.js";
 import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS, ITALY_EXTRA } from "./data.js";
 import { PLACES, slugify } from "./places.js";
@@ -258,7 +259,8 @@ function home() {
 // ---- Overview and day cards ----
 function photoOf(d) { const p = d.photo; if (!p) return null; if (typeof p === "string") { const u = safeUrl(p); return u ? { src: u, credit: "" } : null; } return p; }
 const legsOn = (trip, n) => (trip.legs ?? []).filter((l) => l.day === n);
-const legHtml = (l) => `<div class="leg"><span class="badge">${esc(l.kind)}</span><div><b>${esc(l.title)}</b><small>${esc(l.note)}</small></div></div>`;
+const airlineMarks = (l) => [...new Set(l.airlines ?? [])].map((k) => AIRLINES[k]).filter(Boolean).map((x) => `<span class="alogo" title="${attr(x.name)}">${x.mark}</span>`).join("");
+const legHtml = (l) => `<div class="leg"><span class="badge">${esc(l.kind)}</span>${airlineMarks(l)}<div><b>${esc(l.title)}</b><small>${esc(l.note)}</small></div></div>`;
 function dayCard(ctx, d) {
   const { trip } = ctx, n = d.n, date = dayDate(trip, n), g = dayGeo(trip, n), ph = photoOf(d);
   const speed = settings(ctx).speed;
@@ -297,9 +299,10 @@ const MODE_NAME = { sail: "Sailing day", rail: "Train day", air: "Flying day", w
 const brief = (t, n = 230) => { if (t.length <= n) return t; const cut = t.slice(0, n), i = cut.lastIndexOf(". "); return i > 80 ? cut.slice(0, i + 1) : cut.replace(/\s+\S*$/, "") + "…"; };
 function dayLegs(ctx, n) {
   const { trip } = ctx;
-  return (trip.legs ?? []).filter((l) => l.day === n && l.tour).map((l) => {
+  return (trip.legs ?? []).filter((l) => l.day === n && l.tour).flatMap((l) => {
     const pts = (l.route ?? []).map((c) => trip.airports?.[c]?.ll).filter(Boolean);
-    return { title: l.title, mode: l.route ? "air" : "rail", path: l.route ? pts.slice(1).flatMap((b, i) => arcPoints(pts[i], b).slice(i ? 1 : 0)) : trip.geo?.lines?.[l.line] ?? [] };
+    if (!l.route) return [{ title: l.title, mode: "rail", path: trip.geo?.lines?.[l.line] ?? [] }];
+    return pts.slice(1).map((b, i) => ({ title: l.title, mode: "air", craft: l.airlines?.[i], path: arcPoints(pts[i], b) })); // one hop at a time, each in its airline's livery
   });
 }
 function dayMapEnv(ctx) {
