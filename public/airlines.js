@@ -22,6 +22,13 @@ export const AIRLINES = {
     plane: plane({ body: "#cdd3d8", wing: "#c2c9cf", tail: "#0b3a6e", engine: "#9aa5ae", extra: '<path d="M26 56.5l6-2.4v5.6l-6 1.6z" fill="#0078d2"/><path d="M32 54.1l6 2.4v4.8l-6-1.6z" fill="#c30e2e"/><path d="M26 47h12" stroke="#fff" stroke-width="1.6"/><path d="M5 43l6-3.6" stroke="#0078d2" stroke-width="2.4" stroke-linecap="round"/><path d="M59 43l-6-3.6" stroke="#c30e2e" stroke-width="2.4" stroke-linecap="round"/>' }),
     mark: '<svg viewBox="0 0 28 20" width="28" height="20" aria-hidden="true"><path d="M4 18L14 2l3 2-7 14z" fill="#0078d2"/><path d="M11 18l9-13 3 1.5-6 11.5z" fill="#c30e2e"/><path d="M17 18l6-8 3 1-4 7z" fill="#9aa5ae"/></svg>',
   },
+  united: {
+    name: "United",
+    colour: "#0033a0",
+    // White jet with a dark-blue tail and engines carrying the globe.
+    plane: plane({ body: "#ffffff", wing: "#dfe5ee", tail: "#0a2a6e", engine: "#0033a0", extra: '<path d="M29 51.5l3-1.4 3 1.4V57l-3 1.2-3-1.2z" fill="#0a2a6e"/><circle cx="32" cy="54.3" r="2" fill="#fff" stroke="#0033a0" stroke-width=".7"/><path d="M32 17v29" stroke="#8aa0c8" stroke-width="1.6" stroke-linecap="round"/>' }),
+    mark: '<svg viewBox="0 0 28 20" width="28" height="20" aria-hidden="true"><circle cx="14" cy="10" r="8.5" fill="#0033a0"/><path d="M5.5 10h17M14 1.5c-3.5 3-3.5 14 0 17M14 1.5c3.5 3 3.5 14 0 17M7 5.5c4 1.6 10 1.6 14 0M7 14.5c4-1.6 10-1.6 14 0" fill="none" stroke="#fff" stroke-width="1"/></svg>',
+  },
 };
 
 /** The map marker for a plane in an airline's livery: the plane (the page rotates `.prot`) with a name tag showing the logo. */
