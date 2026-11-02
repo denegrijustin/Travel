@@ -29,6 +29,13 @@ export const AIRLINES = {
     plane: plane({ body: "#ffffff", wing: "#dfe5ee", tail: "#0a2a6e", engine: "#0033a0", extra: '<path d="M29 51.5l3-1.4 3 1.4V57l-3 1.2-3-1.2z" fill="#0a2a6e"/><circle cx="32" cy="54.3" r="2" fill="#fff" stroke="#0033a0" stroke-width=".7"/><path d="M32 17v29" stroke="#8aa0c8" stroke-width="1.6" stroke-linecap="round"/>' }),
     mark: '<svg viewBox="0 0 28 20" width="28" height="20" aria-hidden="true"><circle cx="14" cy="10" r="8.5" fill="#0033a0"/><path d="M5.5 10h17M14 1.5c-3.5 3-3.5 14 0 17M14 1.5c3.5 3 3.5 14 0 17M7 5.5c4 1.6 10 1.6 14 0M7 14.5c4-1.6 10-1.6 14 0" fill="none" stroke="#fff" stroke-width="1"/></svg>',
   },
+  klm: {
+    name: "KLM",
+    colour: "#00a1de",
+    // Light-blue-topped jet (seen from above) with white wings and a blue tail and engines.
+    plane: plane({ body: "#4cc0ea", wing: "#ffffff", tail: "#00a1de", engine: "#00a1de", extra: '<path d="M29 51.5l3-1.4 3 1.4V57l-3 1.2-3-1.2z" fill="#00a1de"/><path d="M32 12v34" stroke="#fff" stroke-width="2" stroke-linecap="round"/>' }),
+    mark: '<svg viewBox="0 0 28 20" width="28" height="20" aria-hidden="true"><rect x="1" y="4" width="26" height="15" rx="3.5" fill="#00a1de"/><path d="M9 4l1.5-2.5L14 3l3.5-1.5L19 4z" fill="#00a1de"/><text x="14" y="15.2" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="9.5" fill="#fff">KLM</text></svg>',
+  },
 };
 
 /** The map marker for a plane in an airline's livery: the plane (the page rotates `.prot`) with a name tag showing the logo. */
