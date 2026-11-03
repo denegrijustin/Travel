@@ -14,7 +14,15 @@ export const ITALY_PHOTOS={"1":{"src":"/img/day-1.jpg","credit":"Richard Nevell 
 
 // The rest of the journey: Rome after the sailing week, and the flights and trains that bracket the trip.
 // Dates assume the charter ends on Saturday Jun 26: train to Rome that morning, a full Sunday there, and a flight home on Monday Jun 28.
+// A flight leg lists its flights ({ no, airline, aircraft, cabin, seats }); aircraft and seats show on the booking card, or "to add" when missing.
 // Legs can be adjusted by editing this file or by adding your own bookings (Reservations), which also show on the day cards.
+// The days before the charter: out to Toronto, the overnight flight, and Rome. Day numbers follow on from these, so the sailing week is Days 4 to 11.
+export const ITALY_PRE = [
+  ["Jun 15", "Fly to Toronto", ["Toronto"], "Fly Kansas City to Toronto on United UA303 (3:22 PM, landing 9:34 PM), then check in at the Hilton Toronto Airport Hotel & Suites in Mississauga for the night.", "walk"],
+  ["Jun 16", "Toronto → Amsterdam", ["Amsterdam"], "Check out by noon, then take KLM KL692 from Toronto Pearson at 4:45 PM: an overnight flight to Amsterdam Schiphol, where you connect straight on to Rome.", "walk"],
+  ["Jun 17", "Amsterdam → Rome", ["Rome"], "KLM KL1601 leaves Amsterdam at 7:20 AM for Rome Fiumicino. The arrival time is still to add. A first day in Rome before the train to Naples (no hotel is added yet).", "walk"],
+];
+
 export const ITALY_EXTRA = {
   days: [
     ["Jun 26", "Salerno → Rome by train", ["Salerno", "Rome"], "Disembark in Salerno and take the train to Rome, about two hours on a high-speed service. Check in, then spend the afternoon and evening on foot around the historic centre.", "rail"],
@@ -22,7 +30,7 @@ export const ITALY_EXTRA = {
     ["Jun 28", "Fly home", [], "Head to Fiumicino airport (Terminal 3) for the 11:05 AM flight to Philadelphia, then connect to Kansas City, landing at 8:03 PM. Allow plenty of time for the international departure and for customs in Philadelphia.", "air"],
   ],
   places: {
-    Rome: [41.9028, 12.4964], Colosseum: [41.8902, 12.4922], Pantheon: [41.8986, 12.4769], "Trevi Fountain": [41.9009, 12.4833], "Vatican City": [41.9022, 12.4539],
+    Toronto: [43.7066, -79.599], Amsterdam: [52.3676, 4.9041], Rome: [41.9028, 12.4964], Colosseum: [41.8902, 12.4922], Pantheon: [41.8986, 12.4769], "Trevi Fountain": [41.9009, 12.4833], "Vatican City": [41.9022, 12.4539],
   },
   route: {
     2: ["Marina d'Arechi", "@D2", "Laurito Cove", "Positano"], // round Capo d'Orso and Capo Conca at sea
@@ -40,13 +48,13 @@ export const ITALY_EXTRA = {
   },
   airports: { MCI: { name: "Kansas City (MCI)", ll: [39.2976, -94.7139] }, YYZ: { name: "Toronto Pearson (YYZ)", ll: [43.6777, -79.6248] }, NAP: { name: "Naples (NAP)", ll: [40.886, 14.2908] }, FCO: { name: "Rome Fiumicino (FCO)", ll: [41.8003, 12.2389] }, PHL: { name: "Philadelphia (PHL)", ll: [39.8744, -75.2424] }, AMS: { name: "Amsterdam Schiphol (AMS)", ll: [52.3105, 4.7683] } },
   legs: [
-    { id: "out-kc", day: 1, tour: true, kind: "Flight", date: "2027-06-15", title: "Kansas City → Toronto", route: ["MCI", "YYZ"], airlines: ["united"], note: "Tue Jun 15. United UA303, Kansas City (MCI) 3:22 PM → Toronto Pearson (YYZ) 9:34 PM." },
+    { id: "out-kc", day: 1, tour: true, kind: "Flight", date: "2027-06-15", title: "Kansas City → Toronto", route: ["MCI", "YYZ"], airlines: ["united"], flights: [{ no: "UA303", airline: "United" }], note: "Tue Jun 15. United UA303, Kansas City (MCI) 3:22 PM → Toronto Pearson (YYZ) 9:34 PM." },
     { id: "toronto-hotel", day: 1, kind: "Hotel", date: "2027-06-15", title: "Hilton Toronto Airport Hotel & Suites", note: "Check in Tue Jun 15 from 3:00 PM, check out Wed Jun 16 by 12:00 PM (1 night). 5875 Airport Road, Mississauga, ON L4V 1N1. +1 905 677 9900." },
-    { id: "out-ams", day: 1, tour: true, kind: "Flight", date: "2027-06-16", title: "Toronto → Amsterdam", route: ["YYZ", "AMS"], airlines: ["klm"], note: "Wed Jun 16. KLM KL692, Toronto Pearson (YYZ) 4:45 PM → Amsterdam Schiphol (AMS). An overnight flight." },
-    { id: "out-fco", day: 1, tour: true, kind: "Flight", date: "2027-06-17", title: "Amsterdam → Rome", route: ["AMS", "FCO"], airlines: ["klm"], note: "Thu Jun 17. KLM KL1601, Amsterdam Schiphol (AMS) 7:20 AM → Rome Fiumicino (FCO)." },
-    { id: "rome-naples", day: 1, tour: true, line: "RN", kind: "Train", date: "2027-06-17", title: "Rome → Naples", note: "Not booked yet: a placeholder for getting from Rome to Naples for Day 1 (Jun 18). High-speed trains from Roma Termini to Napoli Centrale take about 70 minutes; book a seat in advance in summer." },
-    { id: "train-out", day: 2, tour: true, line: "NS", kind: "Train", date: "2027-06-19", title: "Naples → Salerno", note: "From Napoli Centrale, high-speed and regional trains take roughly 35 to 60 minutes. A short taxi from Salerno station reaches Marina d'Arechi." },
-    { id: "train-rome", day: 9, kind: "Train", date: "2027-06-26", title: "Salerno → Rome", note: "High-speed trains to Roma Termini take about two hours. Book a seat in advance in summer." },
-    { id: "home", day: 11, tour: true, kind: "Flight", date: "2027-06-28", title: "Rome → Philadelphia → Kansas City", route: ["FCO", "PHL", "MCI"], airlines: ["iberia", "american"], note: "Mon Jun 28. Iberia IB4659 (operated by American), Rome FCO Terminal 3 11:05 AM → Philadelphia 2:45 PM, 9 h 40 min, Boeing 787-9, Premium Economy. Then American AA2903, Philadelphia 5:51 PM → Kansas City 8:03 PM, 3 h 12 min. From Roma Termini, the Leonardo Express to Fiumicino takes about 30 minutes; allow about three hours before an international departure." },
+    { id: "out-ams", day: 2, tour: true, kind: "Flight", date: "2027-06-16", title: "Toronto → Amsterdam", route: ["YYZ", "AMS"], airlines: ["klm"], flights: [{ no: "KL692", airline: "KLM" }], note: "Wed Jun 16. KLM KL692, Toronto Pearson (YYZ) 4:45 PM → Amsterdam Schiphol (AMS). An overnight flight." },
+    { id: "out-fco", day: 3, tour: true, kind: "Flight", date: "2027-06-17", title: "Amsterdam → Rome", route: ["AMS", "FCO"], airlines: ["klm"], flights: [{ no: "KL1601", airline: "KLM" }], note: "Thu Jun 17. KLM KL1601, Amsterdam Schiphol (AMS) 7:20 AM → Rome Fiumicino (FCO)." },
+    { id: "rome-naples", day: 4, tour: true, line: "RN", kind: "Train", date: "2027-06-18", title: "Rome → Naples", note: "Not booked yet: a placeholder for getting from Rome to Naples on the morning of Jun 18. High-speed trains from Roma Termini to Napoli Centrale take about 70 minutes; book a seat in advance in summer." },
+    { id: "train-out", day: 5, tour: true, line: "NS", kind: "Train", date: "2027-06-19", title: "Naples → Salerno", note: "From Napoli Centrale, high-speed and regional trains take roughly 35 to 60 minutes. A short taxi from Salerno station reaches Marina d'Arechi." },
+    { id: "train-rome", day: 12, kind: "Train", date: "2027-06-26", title: "Salerno → Rome", note: "High-speed trains to Roma Termini take about two hours. Book a seat in advance in summer." },
+    { id: "home", day: 14, tour: true, kind: "Flight", date: "2027-06-28", title: "Rome → Philadelphia → Kansas City", route: ["FCO", "PHL", "MCI"], airlines: ["iberia", "american"], flights: [{ no: "IB4659", airline: "Iberia (operated by American)", aircraft: "Boeing 787-9", cabin: "Premium Economy" }, { no: "AA2903", airline: "American" }], note: "Mon Jun 28. Iberia IB4659 (operated by American), Rome FCO Terminal 3 11:05 AM → Philadelphia 2:45 PM, 9 h 40 min, Boeing 787-9, Premium Economy. Then American AA2903, Philadelphia 5:51 PM → Kansas City 8:03 PM, 3 h 12 min. From Roma Termini, the Leonardo Express to Fiumicino takes about 30 minutes; allow about three hours before an international departure." },
   ],
 };
