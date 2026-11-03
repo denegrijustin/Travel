@@ -1,7 +1,7 @@
 import { arcPoints, countdown, SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, streetViewUrl, streetViewEmbedUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
 import { AIRLINES } from "./airlines.js";
 import { GOOGLE_MAPS_KEY } from "./config.js";
-import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS, ITALY_EXTRA } from "./data.js";
+import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS, ITALY_EXTRA, ITALY_PRE } from "./data.js";
 import { PLACES, slugify } from "./places.js";
 import { initTripMap, initDayMap, destroyMap, flyToPin, replayDay, fitDay, dayColor } from "./map.js";
 
@@ -37,17 +37,19 @@ const put = (tripId, name, value) => { setSection(db, tripId, name, value); pers
 // ---------------------------------------------------------------------------------------------------------------------
 // Trips. The built-in Italy trip and the trips you create share one shape.
 // ---------------------------------------------------------------------------------------------------------------------
-const ALIAS = { 1: { Salerno: "Marina d'Arechi" } }; // Italy: the first "Salerno" is the marina the boat leaves from
+const ALIAS = { 4: { Salerno: "Marina d'Arechi" } }; // Italy: the first "Salerno" is the marina the boat leaves from
 function italyTrip() {
-  const raw = ITALY_RAW[0], X = ITALY_EXTRA;
+  const raw = ITALY_RAW[0], X = ITALY_EXTRA, P = ITALY_PRE.length; // P days of travel before the charter, so the sailing week starts on Day P + 1
   const days = [
-    ...raw.itinerary.map(([, title, stops, desc], i) => ({ n: i + 1, title, desc, stops, photo: ITALY_PHOTOS[i + 1] ?? null, mode: i ? "sail" : "walk" })),
-    ...X.days.map(([, title, stops, desc, mode], i) => ({ n: raw.itinerary.length + i + 1, title, desc, stops, photo: ITALY_PHOTOS[raw.itinerary.length + i + 1] ?? null, mode })),
+    ...ITALY_PRE.map(([, title, stops, desc, mode], i) => ({ n: i + 1, title, desc, stops, photo: null, mode })),
+    ...raw.itinerary.map(([, title, stops, desc], i) => ({ n: P + i + 1, title, desc, stops, photo: ITALY_PHOTOS[i + 1] ?? null, mode: i ? "sail" : "walk" })),
+    ...X.days.map(([, title, stops, desc, mode], i) => ({ n: P + raw.itinerary.length + i + 1, title, desc, stops, photo: ITALY_PHOTOS[raw.itinerary.length + i + 1] ?? null, mode })),
   ];
+  const route = Object.fromEntries(Object.entries({ ...ITALY_GEO.route, ...X.route }).map(([k, v]) => [+k + P, v])); // the charter's routes are written for Days 1 to 11
   return {
-    id: raw.id, name: raw.name, start: "2027-06-18", builtin: true, mode: "sail", places: 10, final: "Kansas City", // the ten towns, islands and cities; the chips list every stop
+    id: raw.id, name: raw.name, start: "2027-06-15", builtin: true, mode: "sail", places: 12, final: "Kansas City", // the twelve towns, islands and cities (Toronto and Amsterdam included); the chips list every stop
     days, legs: X.legs, airports: X.airports,
-    geo: { ...ITALY_GEO, lines: X.lines, places: { ...ITALY_GEO.places, ...X.places }, route: { ...ITALY_GEO.route, ...X.route } },
+    geo: { ...ITALY_GEO, lines: X.lines, places: { ...ITALY_GEO.places, ...X.places }, route },
   };
 }
 const customTrips = () => db.trips.v;
@@ -240,7 +242,7 @@ setInterval(tickCountdowns, 30000);
 
 // ---- Home ----
 function tripCard(t) {
-  const last = t.days.at(-1)?.stops.at(-1) ?? "—";
+  const last = t.final ?? t.days.at(-1)?.stops.at(-1) ?? "—";
   return `<a class="tcard" href="/trips/${attr(t.id)}" data-link><div class="cover"><h3>${esc(t.name)}</h3><span>${esc(tripDates(t))}</span></div><div class="meta"><div>Duration<b>${t.days.length} day${t.days.length === 1 ? "" : "s"}</b></div><div>Destinations<b>${uniqueStops(t)} place${uniqueStops(t) === 1 ? "" : "s"}</b></div><div>Ends in<b>${esc(last)}</b></div></div></a>`;
 }
 function newTripForm() {
@@ -259,8 +261,9 @@ function home() {
 // ---- Overview and day cards ----
 function photoOf(d) { const p = d.photo; if (!p) return null; if (typeof p === "string") { const u = safeUrl(p); return u ? { src: u, credit: "" } : null; } return p; }
 const legsOn = (trip, n) => (trip.legs ?? []).filter((l) => l.day === n);
+const flightDetail = (l) => (l.flights?.length ? `<div class="fdet">${l.flights.map((f) => `<div><b>${esc(f.no)}</b> · ${esc(f.airline)} · Aircraft: ${f.aircraft ? esc(f.aircraft) : '<i>to add</i>'}${f.cabin ? ` · ${esc(f.cabin)}` : ""} · Seats: ${f.seats ? esc(f.seats) : '<i>to add</i>'}</div>`).join("")}</div>` : "");
 const airlineMarks = (l) => [...new Set(l.airlines ?? [])].map((k) => AIRLINES[k]).filter(Boolean).map((x) => `<span class="alogo" title="${attr(x.name)}">${x.mark}</span>`).join("");
-const legHtml = (l) => `<div class="leg"><span class="badge">${esc(l.kind)}</span>${airlineMarks(l)}<div><b>${esc(l.title)}</b><small>${esc(l.note)}</small></div></div>`;
+const legHtml = (l) => `<div class="leg"><span class="badge">${esc(l.kind)}</span>${airlineMarks(l)}<div><b>${esc(l.title)}</b><small>${esc(l.note)}</small>${flightDetail(l)}</div></div>`;
 function dayCard(ctx, d) {
   const { trip } = ctx, n = d.n, date = dayDate(trip, n), g = dayGeo(trip, n), ph = photoOf(d);
   const speed = settings(ctx).speed;
@@ -288,7 +291,7 @@ function overview(ctx) {
   const { trip } = ctx, n = trip.days.length, last = trip.final ?? trip.days.at(-1)?.stops.at(-1) ?? "—";
   const s = settings(ctx);
   return `${ctx.readonly ? `<div class="banner">This is a shared, read-only copy of the plan${ctx.snap?.createdAt ? ` made ${esc(new Date(ctx.snap.createdAt).toLocaleDateString())}` : ""}. Changes made after that are not shown.</div>` : `<a class="back" href="/" data-link>← All trips</a>`}<div class="eyebrow">TRIP OVERVIEW</div><section class="hero"><h1>${esc(trip.name)}</h1><p>${esc(tripDates(trip))}</p><div class="stats"><div class="stat">Duration<b>${n} day${n === 1 ? "" : "s"}</b></div><div class="stat">Destinations<b>${uniqueStops(trip)} place${uniqueStops(trip) === 1 ? "" : "s"}</b></div><div class="stat">Final destination<b>${esc(last)}</b></div></div></section>
-  ${trip.legs?.length ? `<section class="section"><h2>Getting there and back</h2><div class="legs">${trip.legs.map((l) => `<div class="leg"><span class="badge">${esc(l.kind)}</span><div><b>${esc(l.title)}</b><small>${esc(fmtDate(l.date, { weekday: "short", month: "short", day: "numeric" }))} · ${esc(l.note)}</small></div></div>`).join("")}</div></section>` : ""}
+  ${trip.legs?.length ? `<section class="section"><h2>Getting there and back</h2><div class="legs">${trip.legs.map((l) => `<div class="leg"><span class="badge">${esc(l.kind)}</span><div><b>${esc(l.title)}</b><small>${esc(fmtDate(l.date, { weekday: "short", month: "short", day: "numeric" }))} · ${esc(l.note)}</small>${flightDetail(l)}</div></div>`).join("")}</div></section>` : ""}
   <section class="section"><h2>Itinerary</h2>${ctx.readonly ? "" : `<div class="note" style="margin-bottom:12px">Saved on this device${sync.key ? " and synced to your other devices." : ". Turn on sync from the home page to use it on other devices."}</div>`}
   ${!ctx.readonly && trip.mode === "sail" ? `<form class="no-print" data-form="speed" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;font-size:13px;color:var(--muted)"><label for="spd">Cruising speed</label><input id="spd" name="speed" type="number" min="2" max="30" step="0.5" value="${s.speed}" style="width:80px;border:1px solid var(--line);border-radius:10px;padding:6px 8px"> kn <button class="btn small ghost" type="submit">Update</button></form>` : ""}
   <div class="days">${trip.days.map((d) => dayCard(ctx, d)).join("")}</div>${!ctx.readonly && !trip.builtin ? `<p><button class="btn ghost" style="margin-top:14px" data-act="day-add">+ Add a day</button></p>` : ""}</section>`;
