@@ -58,7 +58,10 @@ function oxfordTrip() {
   return { id: OXFORD.id, name: OXFORD.name, start: OXFORD.start, builtin: true, mode: "road", days, geo: { places: OXFORD.places, lines: OXFORD.lines, route: Object.fromEntries(days.map((d) => [d.n, ["@R" + d.n]])) } };
 }
 const customTrips = () => db.trips.v;
-const allTrips = () => [italyTrip(), oxfordTrip(), ...customTrips()];
+// Built-in trips can be removed too: their ids are kept in a small list that syncs with everything else, and "Restore" on the Trips page brings them back.
+const hiddenIds = () => getSection(db, "_app", "hidden", []);
+const builtinTrips = () => [italyTrip(), oxfordTrip()];
+const allTrips = () => [...builtinTrips().filter((t) => !hiddenIds().includes(t.id)), ...customTrips()];
 const findTrip = (id) => allTrips().find((t) => t.id === id);
 const dayDate = (trip, n) => addDays(trip.start, n - 1);
 const dayLabel = (trip, n) => fmtDate(dayDate(trip, n), { weekday: "short", month: "short", day: "numeric" });
@@ -248,8 +251,12 @@ setInterval(tickCountdowns, 30000);
 // ---- Home ----
 function tripCard(t) {
   const last = t.final ?? t.days.at(-1)?.stops.at(-1) ?? "—";
-  return `<a class="tcard" href="/trips/${attr(t.id)}" data-link><div class="cover"><h3>${esc(t.name)}</h3><span>${esc(tripDates(t))}</span></div><div class="meta"><div>Duration<b>${t.days.length} day${t.days.length === 1 ? "" : "s"}</b></div><div>Destinations<b>${uniqueStops(t)} place${uniqueStops(t) === 1 ? "" : "s"}</b></div><div>Ends in<b>${esc(last)}</b></div></div></a>`;
+  return `<div class="tc"><a class="tcard" href="/trips/${attr(t.id)}" data-link><div class="cover"><h3>${esc(t.name)}</h3><span>${esc(tripDates(t))}</span></div><div class="meta"><div>Duration<b>${t.days.length} day${t.days.length === 1 ? "" : "s"}</b></div><div>Destinations<b>${uniqueStops(t)} place${uniqueStops(t) === 1 ? "" : "s"}</b></div><div>Ends in<b>${esc(last)}</b></div></div></a><button type="button" class="tcdel" data-act="trip-del-id" data-id="${attr(t.id)}" aria-label="Delete ${attr(t.name)}" title="Delete this trip">Delete</button></div>`;
 }
+const removedBox = () => {
+  const gone = builtinTrips().filter((t) => hiddenIds().includes(t.id));
+  return gone.length ? `<p class="note" style="margin-top:14px">Deleted trips: ${gone.map((t) => `${esc(t.name)} <button type="button" class="btn small ghost" data-act="trip-restore" data-id="${attr(t.id)}">Restore</button>`).join(" · ")}</p>` : "";
+};
 function newTripForm() {
   const d = new Date(); d.setMonth(d.getMonth() + 1);
   return `<form class="tool" data-form="new-trip" style="grid-column:1/-1"><h3 style="margin:0 0 10px">New trip</h3><div class="grid2"><div><label for="nt-name">Name</label><input id="nt-name" name="name" required maxlength="60" placeholder="Lisbon long weekend"></div><div><label for="nt-start">First day</label><input id="nt-start" name="start" type="date" required value="${isoDate(d)}"></div><div><label for="nt-days">Number of days</label><input id="nt-days" name="days" type="number" min="1" max="45" required value="4"></div></div><div class="actions"><button class="btn" type="submit">Create trip</button><button class="btn ghost" type="button" data-act="new-trip-cancel">Cancel</button></div></form>`;
@@ -260,7 +267,7 @@ function syncBox() {
 }
 function home() {
   const iosHint = /iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone;
-  return `<div class="eyebrow">MY TRIPS</div><section class="section"><h2>Trips</h2><div class="trips">${allTrips().map(tripCard).join("")}${ui.newTrip ? newTripForm() : `<button class="newcard" data-act="new-trip">+ New trip</button>`}</div></section>${syncBox()}${installEvent ? `<p class="note" style="margin-top:14px"><button class="btn small ghost" data-act="install">Install this app</button> It then opens on its own and keeps working offline.</p>` : iosHint ? `<p class="note" style="margin-top:14px">To install on iPhone: tap Share, then Add to Home Screen.</p>` : ""}`;
+  return `<div class="eyebrow">MY TRIPS</div><section class="section"><h2>Trips</h2><div class="trips">${allTrips().map(tripCard).join("")}${ui.newTrip ? newTripForm() : `<button class="newcard" data-act="new-trip">+ New trip</button>`}</div>${removedBox()}</section>${syncBox()}${installEvent ? `<p class="note" style="margin-top:14px"><button class="btn small ghost" data-act="install">Install this app</button> It then opens on its own and keeps working offline.</p>` : iosHint ? `<p class="note" style="margin-top:14px">To install on iPhone: tap Share, then Add to Home Screen.</p>` : ""}`;
 }
 
 // ---- Overview and day cards ----
@@ -485,7 +492,7 @@ function shareView(ctx) {
   <div class="panel"><h3>Calendar</h3><p class="note" style="margin:0 0 10px">One all-day event per trip day, plus an event for each reservation that has a date. Opens in Apple Calendar, Google Calendar and Outlook.</p><button class="btn" data-act="ics">Download calendar file (.ics)</button></div>
   <div class="panel"><h3>Share a read-only link</h3><p class="note" style="margin:0 0 10px">Anyone with the link can see the itinerary, map, day plans and reservations. It is a copy made now: make a new link to share later changes. Links last a year.</p><form data-form="share"><label class="check" style="margin-bottom:8px"><input type="checkbox" name="conf"><span>Include confirmation numbers, links and notes on reservations</span></label><label class="check" style="margin-bottom:12px"><input type="checkbox" name="places"><span>Include saved places</span></label><button class="btn" type="submit">${ui.busy ? "Creating…" : "Create link"}</button></form>${ui.shareUrl ? `<div class="linkbox"><input id="shareurl" readonly value="${attr(ui.shareUrl)}" aria-label="Share link"><button class="btn" data-act="copy-link">Copy</button>${navigator.share ? `<button class="btn ghost" data-act="native-share">Share…</button>` : ""}</div>` : ""}${ui.msg ? `<p class="note" style="margin-top:8px">${esc(ui.msg)}</p>` : ""}</div>
   <div class="panel"><h3>Back up your data</h3><p class="note" style="margin:0 0 10px">A copy of everything in this app, as one file.</p><button class="btn ghost" data-act="export-json">Download backup (.json)</button></div>
-  ${ctx.trip.builtin ? "" : `<div class="panel"><h3>Delete this trip</h3><p class="note" style="margin:0 0 10px">Removes the trip and everything saved under it, here and on synced devices.</p><button class="btn danger" data-act="trip-del">Delete trip</button></div>`}</section>`;
+  <div class="panel"><h3>Delete this trip</h3><p class="note" style="margin:0 0 10px">${ctx.trip.builtin ? "Removes the trip from your list, here and on synced devices. You can bring it back from the Trips page." : "Removes the trip and everything saved under it, here and on synced devices."}</p><button class="btn danger" data-act="trip-del">Delete trip</button></div></section>`;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -524,6 +531,16 @@ function render() {
   if (n && !ctx.readonly) { let t; n.oninput = () => { clearTimeout(t); t = setTimeout(() => put(ctx.trip.id, "notes", n.value), 400); }; }
 }
 
+function deleteTrip(id, leave) {
+  const t = findTrip(id);
+  if (!t) return;
+  if (!confirm(t.builtin ? `Delete "${t.name}"? You can restore it from the Trips page.` : `Delete "${t.name}" and everything saved under it?`)) return;
+  if (t.builtin) setSection(db, "_app", "hidden", [...new Set([...hiddenIds(), id])]);
+  else setTrips(db, customTrips().filter((x) => x.id !== id));
+  persist();
+  if (leave) go("/"); else render();
+  toast("Trip deleted.");
+}
 const cur = () => { const r = route(); return r.kind === "trip" ? context(r) : null; };
 const updateTrip = (trip) => { setTrips(db, customTrips().map((t) => (t.id === trip.id ? trip : t))); persist(); };
 const num = (v) => { const x = Number(String(v).replace(",", ".")); return Number.isFinite(x) ? x : NaN; };
@@ -555,7 +572,9 @@ const acts = {
     if (!confirm("Delete this day?")) return;
     const t = structuredClone(cur().trip); t.days.splice(+el.dataset.day - 1, 1); t.days.forEach((d, i) => (d.n = i + 1)); updateTrip(t); ui.editDay = null; render();
   },
-  "trip-del": () => { const c = cur(); if (confirm(`Delete "${c.trip.name}" and everything saved under it?`)) { setTrips(db, customTrips().filter((t) => t.id !== c.trip.id)); persist(); go("/"); } },
+  "trip-del": () => { const c = cur(); if (c) deleteTrip(c.trip.id, true); },
+  "trip-del-id": (el) => deleteTrip(el.dataset.id, false),
+  "trip-restore": (el) => { setSection(db, "_app", "hidden", hiddenIds().filter((x) => x !== el.dataset.id)); persist(); render(); toast("Trip restored."); },
   "res-edit": (el) => { ui.editRes = el.dataset.id; render(); document.querySelector('[data-form="res-save"]')?.scrollIntoView({ block: "center" }); },
   "res-cancel": () => { ui.editRes = null; render(); },
   "res-del": (el) => { if (confirm("Delete this reservation?")) { ui.editRes = null; edit("reservations", [], (l) => asRecords(l).filter((r) => r.id !== el.dataset.id)); } },
