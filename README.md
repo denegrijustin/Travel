@@ -3,7 +3,7 @@
 Personal trip planner, deployed as the `italy` Cloudflare Worker (italy.elskatemm.com). A static single-page app in `public/` plus a small Worker (`src/worker.js`) for sync and share links.
 
 ## What it does
-- **Trips**: the built-in Italy 2027 sailing trip, the Oxford, Mississippi weekend (a road trip), and trips you create (name, first day, number of days; each day has a title, notes, places and an optional photo link).
+- **Trips**: the built-in Italy 2027 sailing trip, the Oxford, Mississippi weekend (a road trip that follows the real roads), and trips you create (name, first day, number of days; each day has a title, notes, places and an optional photo link).
 - **Itinerary**: day cards with photos, sailing distance and time at your cruising speed, weather (forecast within two weeks, otherwise what that date was like last year), your own time-by-time plan for each day, and the reservations that fall on that day.
 - **Map**: the whole trip drawn as one connected route (a colour per day, direction arrows, dashed links between days), with animated zooming between days and places, a satellite layer, and a card for the place you pick. **Play trip** sails a boat along the route, stopping at each place, with a progress scrubber and 1×/2×/4× speed (reduced-motion settings step from place to place instead). Your saved places show as stars.
 - **Place guides**: a written history, what to see and tips for each Italy stop (`public/places.js`), plus a live summary and photo from Wikipedia for any place, including the stops of trips you create. Every stop chip links to its guide; you can keep notes on each place.

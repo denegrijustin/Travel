@@ -52,10 +52,10 @@ function italyTrip() {
     geo: { ...ITALY_GEO, lines: X.lines, places: { ...ITALY_GEO.places, ...X.places }, route },
   };
 }
-// The Oxford weekend: a drive, so each day's route simply joins its stops in order.
+// The Oxford weekend: a drive, so each day follows a road route (OXFORD.lines) through its stops.
 function oxfordTrip() {
   const days = OXFORD.days.map(([, title, stops, desc], i) => ({ n: i + 1, title, desc, stops, photo: null, mode: "road" }));
-  return { id: OXFORD.id, name: OXFORD.name, start: OXFORD.start, builtin: true, mode: "road", days, geo: { places: OXFORD.places, route: Object.fromEntries(days.map((d) => [d.n, d.stops])) } };
+  return { id: OXFORD.id, name: OXFORD.name, start: OXFORD.start, builtin: true, mode: "road", days, geo: { places: OXFORD.places, lines: OXFORD.lines, route: Object.fromEntries(days.map((d) => [d.n, ["@R" + d.n]])) } };
 }
 const customTrips = () => db.trips.v;
 const allTrips = () => [italyTrip(), oxfordTrip(), ...customTrips()];
@@ -273,7 +273,7 @@ function dayCard(ctx, d) {
   const { trip } = ctx, n = d.n, date = dayDate(trip, n), g = dayGeo(trip, n), ph = photoOf(d);
   const speed = settings(ctx).speed;
   const nm = g.path.length > 1 ? pathNm(g.path) : 0, mode = d.mode ?? trip.mode;
-  const dist = nm < 0.5 ? "" : mode === "sail" ? `<span>About ${Math.round(nm)} nm · ${fmtHours(nm / speed)} at ${speed} kn</span>` : `<span>About ${Math.round(nm * 1.15078)} mi ${mode === "rail" ? "by rail, as the crow flies" : "in a straight line"}</span>`;
+  const dist = nm < 0.5 ? "" : mode === "sail" ? `<span>About ${Math.round(nm)} nm · ${fmtHours(nm / speed)} at ${speed} kn</span>` : `<span>About ${Math.round(nm * 1.15078)} mi ${mode === "rail" ? "by rail, as the crow flies" : mode === "road" ? "of driving" : "in a straight line"}</span>`;
   const resv = resList(ctx).filter((r) => r.date === date).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   const plans = ((ctx.get("plans", {}) || {})[n] ?? []).slice().sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
   const editing = !ctx.readonly && ui.editDay === n;
@@ -321,7 +321,7 @@ function dayView(ctx) {
   const { trip } = ctx, n = +ctx.place, d = trip.days[n - 1];
   if (!d) return `<a class="back" href="${attr(ctx.base)}" data-link>← Itinerary</a><div class="banner">That day is not on this trip.</div>`;
   const g = dayGeo(trip, n), ph = photoOf(d), mode = d.mode ?? trip.mode, nm = g.path.length > 1 ? pathNm(g.path) : 0;
-  const dist = nm < 0.5 ? "" : mode === "sail" ? `About ${Math.round(nm)} nm · ${fmtHours(nm / settings(ctx).speed)} at ${settings(ctx).speed} kn` : `About ${Math.round(nm * 1.15078)} mi in a straight line`;
+  const dist = nm < 0.5 ? "" : mode === "sail" ? `About ${Math.round(nm)} nm · ${fmtHours(nm / settings(ctx).speed)} at ${settings(ctx).speed} kn` : `About ${Math.round(nm * 1.15078)} mi ${mode === "road" ? "of driving" : "in a straight line"}`;
   const guided = trip.builtin;
   const stops = d.stops.map((name, i) => {
     const c = guided ? PLACES[name] : null, ll = stopLl(trip, name), col = dayColor(n);
