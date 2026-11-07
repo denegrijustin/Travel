@@ -58,3 +58,19 @@ export const ITALY_EXTRA = {
     { id: "home", day: 14, tour: true, kind: "Flight", date: "2027-06-28", title: "Rome → Philadelphia → Kansas City", route: ["FCO", "PHL", "MCI"], airlines: ["iberia", "american"], flights: [{ no: "IB4659", airline: "Iberia (operated by American)", aircraft: "Boeing 787-9", cabin: "Premium Economy" }, { no: "AA2903", airline: "American" }], note: "Mon Jun 28. Iberia IB4659 (operated by American), Rome FCO Terminal 3 11:05 AM → Philadelphia 2:45 PM, 9 h 40 min, Boeing 787-9, Premium Economy. Then American AA2903, Philadelphia 5:51 PM → Kansas City 8:03 PM, 3 h 12 min. From Roma Termini, the Leonardo Express to Fiumicino takes about 30 minutes; allow about three hours before an international departure." },
   ],
 };
+
+// Built-in trip: the Oxford, Mississippi weekend (Ole Miss vs Georgia). Place coordinates are approximate.
+export const OXFORD = {
+  id: "oxford-2026", name: "Oxford Weekend", start: "2026-11-05",
+  days: [
+    ["Thu, Nov 5", "Olathe → Memphis", ["Olathe", "Springfield, MO", "Hammer & Nail", "Central BBQ"], "Drove down from Kansas City through Springfield, Missouri, to Memphis. First stop in town was Hammer & Nail, then dinner at Central BBQ."],
+    ["Fri, Nov 6", "A day in Memphis", ["Crosstown Concourse", "The Peabody", "Silky O'Sullivan's", "The Beauty Shop"], "Crosstown first, then the Peabody Hotel, drinks at Silky O'Sullivan's on Beale Street, and dinner at The Beauty Shop to end the night."],
+    ["Sat, Nov 7", "Ole Miss vs Georgia", ["Oxford, MS", "The Grove", "Vaught-Hemingway Stadium", "Memphis"], "Up to Oxford for the Ole Miss and Georgia game: a walk around campus and the Grove, then the game at 6:30 PM, and the drive back to Memphis afterwards."],
+    ["Sun, Nov 8", "Memphis → Olathe", ["Springfield, MO", "Olathe"], "Back home to Olathe on Sunday morning, the same route as the drive down, through Springfield."],
+  ],
+  places: {
+    Olathe: [38.8814, -94.8191], "Springfield, MO": [37.209, -93.2923], "Hammer & Nail": [35.135, -89.989], "Central BBQ": [35.1176, -89.9658],
+    "Crosstown Concourse": [35.1495, -89.9812], "The Peabody": [35.1432, -90.0505], "Silky O'Sullivan's": [35.1393, -90.0527], "The Beauty Shop": [35.1224, -89.9894],
+    "Oxford, MS": [34.3665, -89.5192], "The Grove": [34.3646, -89.5382], "Vaught-Hemingway Stadium": [34.362, -89.5343], Memphis: [35.1495, -90.049],
+  },
+};

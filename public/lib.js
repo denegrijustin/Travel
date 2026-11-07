@@ -139,7 +139,7 @@ export const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
  * (about 70 and 450 kn) so a train still reads as about twice as quick as a boat and a flight crosses the screen in a few seconds.
  */
 export const BASE_KN = 7;
-export const MODE_KN = { walk: 2.6, sail: BASE_KN, rail: 14, air: 900 };
+export const MODE_KN = { walk: 2.6, sail: BASE_KN, rail: 14, road: 14, air: 900 };
 export const modeScale = (mode) => BASE_KN / (MODE_KN[mode] ?? BASE_KN);
 /** Real travel time, in hours, of a tour or leg length measured in sail nautical miles. */
 export const tourHours = (units) => units / BASE_KN;
