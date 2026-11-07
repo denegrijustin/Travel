@@ -8,6 +8,7 @@ export const dayColor = (n) => DAYCOL[(n - 1) % DAYCOL.length];
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const TRAIN = '<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><rect x="7" y="4" width="18" height="20" rx="5" fill="#fff" stroke="#17201d" stroke-width="1.5"/><rect x="10" y="8" width="12" height="7" rx="2" fill="#215b50"/><circle cx="12" cy="20" r="1.6" fill="#17201d"/><circle cx="20" cy="20" r="1.6" fill="#17201d"/><path d="M10 28l3-4M22 28l-3-4" stroke="#17201d" stroke-width="2" stroke-linecap="round"/></svg>';
 const PLANE = '<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#fff" stroke="#17201d" stroke-width="1.5"/><path d="M16 5l2 9 8 4v2l-8-2v5l3 2v1.5l-5-1-5 1V25l3-2v-5l-8 2v-2l8-4z" fill="#8a5a00"/></svg>';
+const CAR = '<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path d="M4 19l2.5-7a3 3 0 012.8-2h13.4a3 3 0 012.8 2L28 19v6a1.5 1.5 0 01-1.5 1.5h-2A1.5 1.5 0 0123 25v-1.5H9V25a1.5 1.5 0 01-1.5 1.5h-2A1.5 1.5 0 014 25z" fill="#fff" stroke="#17201d" stroke-width="1.5" stroke-linejoin="round"/><path d="M8.3 12.5h15.4l1.6 5H6.7z" fill="#215b50"/><circle cx="9.5" cy="20.5" r="1.6" fill="#17201d"/><circle cx="22.5" cy="20.5" r="1.6" fill="#17201d"/></svg>';
 const BOAT = '<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path d="M16 3v19H6z" fill="#fff" stroke="#17201d" stroke-width="1.5" stroke-linejoin="round"/><path d="M18 8v14h8z" fill="#fff" stroke="#17201d" stroke-width="1.5" stroke-linejoin="round"/><path d="M4 24h24l-4 5H8z" fill="#215b50" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>';
 
 let current = null; // the running map, so it can be torn down
@@ -179,7 +180,7 @@ export function initTripMap(env) {
   }
 
   // ---- The boat and the tour ----
-  const iconFor = (m, craft) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? (AIRLINES[craft] ? planeMarker(craft) : PLANE) : '<div class="dotpulse"></div>');
+  const iconFor = (m, craft) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "road" ? CAR : m === "air" ? (AIRLINES[craft] ? planeMarker(craft) : PLANE) : '<div class="dotpulse"></div>');
   const modeOf = (v) => v?.mode ?? trip.mode;
   const kindOf = (m, craft) => m + (craft ? ":" + craft : "");
   let curMode = kindOf(modeOf(tour.verts[0]), tour.verts[0].craft);
@@ -188,7 +189,7 @@ export function initTripMap(env) {
   const scrub = document.getElementById("mscrub"), pos = document.getElementById("mpos"), playBtn = document.getElementById("mplay"), speedSel = document.getElementById("mspeed");
   let camAir = false, dist = 0, playing = false, raf = 0, lastT = 0, pauseUntil = 0, nextStop = 0, follow = true;
   const UNITS_PER_S = 6.2, SECONDS = Math.min(90, Math.max(15, tour.total / UNITS_PER_S)); // a steady pace along the route (the boat, as before) so longer trips take longer; at 1x, not counting the stops
-  const VERB = { sail: "sailing", rail: "by train", air: "flying", walk: "on foot" };
+  const VERB = { sail: "sailing", rail: "by train", road: "driving", air: "flying", walk: "on foot" };
   const label = () => { const p = pointAt(tour, dist); return p ? `${typeof p.day === "number" ? `Day ${p.day}` : segs.find((x) => x.n === p.day)?.leg.title} · ${p.craft && AIRLINES[p.craft] ? "flying " + AIRLINES[p.craft].name : VERB[modeOf(p)] ?? ""}` : ""; };
   function setDist(d, { move = true } = {}) {
     dist = Math.max(0, Math.min(d, tour.total));
@@ -348,7 +349,7 @@ export function initDayMap(env) {
     m.on("click", () => { env.onPick?.(p.name); flyToPin(p.name); });
     markers.set(p.name, m);
   });
-  const iconFor = (m, craft) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "air" ? (AIRLINES[craft] ? planeMarker(craft) : PLANE) : '<div class="dotpulse"></div>');
+  const iconFor = (m, craft) => (m === "sail" ? BOAT : m === "rail" ? TRAIN : m === "road" ? CAR : m === "air" ? (AIRLINES[craft] ? planeMarker(craft) : PLANE) : '<div class="dotpulse"></div>');
   const kindOf = (m, craft) => m + (craft ? ":" + craft : "");
   let curMode = kindOf(tour.verts[0]?.mode ?? mode, tour.verts[0]?.craft);
   const rider = L.marker(tour.verts[0]?.ll ?? all[0], { icon: L.divIcon({ className: "boat", html: `<div class="boaticon">${iconFor(tour.verts[0]?.mode ?? mode, tour.verts[0]?.craft)}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), interactive: false, keyboard: false, zIndexOffset: 1000, opacity: 0 }).addTo(map);

@@ -1,7 +1,7 @@
 import { arcPoints, countdown, SECTIONS, canon, emptyDb, setSection, getSection, setTrips, mergeDb, syncKey, addDays, daysBetween, fmtDate, fmtRange, lastOccurrence, isoDate, haversineNm, pathNm, fmtHours, money, convert, expenseTotals, buildIcs, safeUrl, googleMapsUrl, streetViewUrl, streetViewEmbedUrl, appleMapsUrl, asRecords, uid } from "./lib.js";
 import { AIRLINES } from "./airlines.js";
 import { GOOGLE_MAPS_KEY } from "./config.js";
-import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS, ITALY_EXTRA, ITALY_PRE } from "./data.js";
+import { ITALY_RAW, ITALY_GEO, ITALY_PHOTOS, ITALY_EXTRA, ITALY_PRE, OXFORD } from "./data.js";
 import { PLACES, slugify } from "./places.js";
 import { initTripMap, initDayMap, destroyMap, flyToPin, replayDay, fitDay, dayColor } from "./map.js";
 
@@ -52,8 +52,13 @@ function italyTrip() {
     geo: { ...ITALY_GEO, lines: X.lines, places: { ...ITALY_GEO.places, ...X.places }, route },
   };
 }
+// The Oxford weekend: a drive, so each day's route simply joins its stops in order.
+function oxfordTrip() {
+  const days = OXFORD.days.map(([, title, stops, desc], i) => ({ n: i + 1, title, desc, stops, photo: null, mode: "road" }));
+  return { id: OXFORD.id, name: OXFORD.name, start: OXFORD.start, builtin: true, mode: "road", days, geo: { places: OXFORD.places, route: Object.fromEntries(days.map((d) => [d.n, d.stops])) } };
+}
 const customTrips = () => db.trips.v;
-const allTrips = () => [italyTrip(), ...customTrips()];
+const allTrips = () => [italyTrip(), oxfordTrip(), ...customTrips()];
 const findTrip = (id) => allTrips().find((t) => t.id === id);
 const dayDate = (trip, n) => addDays(trip.start, n - 1);
 const dayLabel = (trip, n) => fmtDate(dayDate(trip, n), { weekday: "short", month: "short", day: "numeric" });
@@ -298,7 +303,7 @@ function overview(ctx) {
 }
 
 // ---- Day detail ----
-const MODE_NAME = { sail: "Sailing day", rail: "Train day", air: "Flying day", walk: "On foot" };
+const MODE_NAME = { sail: "Sailing day", rail: "Train day", air: "Flying day", road: "Driving day", walk: "On foot" };
 const brief = (t, n = 230) => { if (t.length <= n) return t; const cut = t.slice(0, n), i = cut.lastIndexOf(". "); return i > 80 ? cut.slice(0, i + 1) : cut.replace(/\s+\S*$/, "") + "…"; };
 function dayLegs(ctx, n) {
   const { trip } = ctx;
